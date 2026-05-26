@@ -3,7 +3,7 @@ import { onLaunch } from '@dcloudio/uni-app'
 
 onLaunch(() => {
   // 云开发初始化
-  if (wx && wx.cloud) {
+  if (typeof wx !== 'undefined' && wx.cloud) {
     wx.cloud.init({
       env: 'YOUR-ENV-ID',
       traceUser: true
