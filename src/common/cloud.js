@@ -12,11 +12,11 @@ export function callCloudFunction(name, data = {}) {
       if (res.result && res.result.code === 0) {
         resolve(res.result.data)
       } else {
-        reject(res.result || { msg: '请求失败' })
+        reject({ code: res.result?.code ?? -1, msg: res.result?.msg || '请求失败' })
       }
     }).catch((err) => {
       console.error(`[${name}] 云函数调用失败:`, err)
-      reject({ msg: '网络错误，请稍后重试' })
+      reject({ code: -1, msg: '网络错误，请稍后重试' })
     })
   })
 }

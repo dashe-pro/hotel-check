@@ -12,10 +12,9 @@ export function filterSensitive(text) {
   let hasSensitive = false
 
   for (const pattern of blockedPatterns) {
-    if (pattern.test(text)) {
-      hasSensitive = true
-      filtered = filtered.replace(pattern, '***')
-    }
+    const before = filtered
+    filtered = filtered.replace(pattern, '***')
+    if (filtered !== before) hasSensitive = true
   }
 
   return { filtered, hasSensitive }
