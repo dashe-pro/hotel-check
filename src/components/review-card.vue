@@ -1,44 +1,96 @@
 <template>
-  <view class="review-card">
+  <view class="review-card" @click="goDetail">
     <view class="review-header">
       <view class="review-type">
-        <text v-if="type === 'case'" class="tag tag-case">公开案件</text>
-        <text v-else class="tag tag-user">用户评论</text>
+        <text v-if="type === 'alert'" class="tag tag-alert">行业警示</text>
+        <text v-else-if="type === 'case'" class="tag tag-case">公开案件</text>
+        <text v-else class="tag tag-user">用户反馈</text>
       </view>
       <text class="review-date">{{ formatDate(discoveryDate) }}</text>
     </view>
     <view class="review-content">{{ content }}</view>
-    <view v-if="source && type === 'case'" class="review-source">
+    <view v-if="source && (type === 'case' || type === 'alert')" class="review-source">
       <text class="source-label">来源：</text>
       <text class="source-link">{{ source }}</text>
     </view>
     <view v-if="images && images.length > 0" class="review-images">
-      <image
-        v-for="img in images"
+      <view
+        v-for="(img, idx) in images"
         :key="img"
-        :src="img"
-        mode="aspectFill"
-        class="review-image"
-      />
+        class="review-image-wrap"
+        @click.stop="previewImage(idx)"
+      >
+        <image :src="img" mode="aspectFill" class="review-image" />
+      </view>
     </view>
     <view class="review-footer">
       <text class="review-time">{{ timeAgo }}</text>
+    </view>
+    <view v-if="reviewId && type !== 'alert'" class="vote-bar">
+      <view :class="['vote-btn', myVote === 'up' ? 'voted-up' : '']" @click.stop="doVote('up')">
+        <text class="vote-icon">▲</text>
+        <text class="vote-text">有用 {{ upvotes }}</text>
+      </view>
+      <view :class="['vote-btn', myVote === 'down' ? 'voted-down' : '']" @click.stop="doVote('down')">
+        <text class="vote-icon">▼</text>
+        <text class="vote-text">{{ downvotes }}</text>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import dayjs from 'dayjs'
 
 const props = defineProps({
-  type: { type: String, default: 'user', validator: (v) => ['user', 'case'].includes(v) },
+  type: { type: String, default: 'user', validator: (v) => ['user', 'case', 'alert'].includes(v) },
   content: { type: String, default: '' },
   discoveryDate: { type: String, default: '' },
   source: { type: String, default: '' },
   images: { type: Array, default: () => [] },
-  createdAt: { type: String, default: '' }
+  createdAt: { type: String, default: '' },
+  reviewId: { type: String, default: '' },
+  upvotes: { type: Number, default: 0 },
+  downvotes: { type: Number, default: 0 }
 })
+
+const emit = defineEmits(['voted'])
+
+const myVote = ref(uni.getStorageSync(`vote_${props.reviewId}`) || '')
+
+async function doVote(voteType) {
+  if (!props.reviewId) return
+  try {
+    const res = await wx.cloud.callFunction({
+      name: 'vote-review',
+      data: { reviewId: props.reviewId, voteType }
+    })
+    if (res.result && res.result.code === 0) {
+      myVote.value = voteType
+      uni.setStorageSync(`vote_${props.reviewId}`, voteType)
+    } else {
+      uni.showToast({ title: res.result?.msg || '操作失败', icon: 'none' })
+    }
+  } catch (err) {
+    uni.showToast({ title: '网络错误', icon: 'none' })
+  }
+}
+
+function goDetail() {
+  if (!props.reviewId) return
+  uni.navigateTo({ url: `/pages/review-detail/index?id=${props.reviewId}` })
+}
+
+function previewImage(idx) {
+  uni.previewImage({
+    urls: props.images,
+    current: String(props.images[idx]),
+    fail: (err) => {
+      console.error('previewImage fail:', err)
+    }
+  })
+}
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
@@ -63,10 +115,14 @@ const timeAgo = computed(() => {
 
 <style lang="scss" scoped>
 .review-card {
-  background: #fff;
+  background: var(--bg-white);
   border-radius: $radius;
   padding: $spacing-md;
   margin-bottom: $spacing-md;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition);
+
+  &:active { transform: scale(0.98); }
 }
 
 .review-header {
@@ -77,41 +133,46 @@ const timeAgo = computed(() => {
 }
 
 .tag {
-  font-size: 22rpx;
-  padding: 4rpx 16rpx;
-  border-radius: 6rpx;
+  font-size: $font-xs;
+  padding: 4rpx 14rpx;
+  border-radius: $radius-sm;
+  font-weight: 500;
 }
 
 .tag-case {
   background: #fde8e8;
-  color: $danger-color;
-  font-weight: 600;
+  color: var(--danger-color);
+}
+
+.tag-alert {
+  background: #fff3cd;
+  color: #856404;
 }
 
 .tag-user {
-  background: #e8f0fe;
-  color: $primary-color;
+  background: var(--primary-light);
+  color: var(--primary-color);
 }
 
 .review-date {
-  font-size: 24rpx;
-  color: $text-light;
+  font-size: $font-xs;
+  color: var(--text-muted);
 }
 
 .review-content {
-  font-size: 28rpx;
-  color: $text-color;
-  line-height: 1.6;
+  font-size: $font-md;
+  color: var(--text-color);
+  line-height: 1.7;
   margin-bottom: $spacing-sm;
 }
 
 .review-source {
-  font-size: 24rpx;
-  color: $text-light;
+  font-size: $font-sm;
+  color: var(--text-light);
   margin-bottom: $spacing-sm;
 
-  .source-label { color: $text-light; }
-  .source-link { color: $primary-color; }
+  .source-label { color: var(--text-light); }
+  .source-link { color: var(--primary-color); }
 }
 
 .review-images {
@@ -119,17 +180,63 @@ const timeAgo = computed(() => {
   gap: $spacing-sm;
   margin-bottom: $spacing-sm;
 
-  .review-image {
+  .review-image-wrap {
     width: 160rpx;
     height: 160rpx;
-    border-radius: 8rpx;
+  }
+
+  .review-image {
+    width: 100%;
+    height: 100%;
+    border-radius: $radius-sm;
   }
 }
 
 .review-footer {
   .review-time {
-    font-size: 22rpx;
-    color: $text-light;
+    font-size: $font-xs;
+    color: var(--text-muted);
   }
+}
+
+.vote-bar {
+  display: flex;
+  gap: $spacing-lg;
+  margin-top: $spacing-sm;
+  padding-top: $spacing-sm;
+  border-top: 1rpx solid var(--border-color);
+}
+
+.vote-btn {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  font-size: $font-xs;
+  color: var(--text-muted);
+  padding: 4rpx 8rpx;
+  border-radius: $radius-sm;
+  transition: all var(--transition);
+
+  &:active { background: var(--bg-color); }
+}
+
+.voted-up {
+  color: var(--primary-color);
+
+  .vote-icon { color: var(--primary-color); }
+}
+
+.voted-down {
+  color: var(--text-light);
+
+  .vote-icon { color: var(--text-light); }
+}
+
+.vote-icon {
+  font-size: 18rpx;
+}
+
+.vote-text {
+  font-size: $font-xs;
 }
 </style>

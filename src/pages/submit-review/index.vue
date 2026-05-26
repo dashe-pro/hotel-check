@@ -7,7 +7,7 @@
       </view>
 
       <view class="form-item">
-        <text class="form-label">发现日期</text>
+        <text class="form-label">发现日期（可选）</text>
         <picker
           mode="date"
           :value="discoveryDate"
@@ -15,7 +15,7 @@
           @change="onDateChange"
         >
           <view class="picker-value">
-            {{ discoveryDate || '请选择日期' }}
+            {{ discoveryDate || '请选择日期（选填）' }}
           </view>
         </picker>
       </view>
@@ -59,8 +59,9 @@
     <view class="disclaimer-box">
       <text class="disclaimer-title">提交须知</text>
       <text class="disclaimer-text">1. 请确保内容真实可信，虚假信息需承担法律责任。</text>
-      <text class="disclaimer-text">2. 评论提交后进入审核，审核通过后公开展示。</text>
+      <text class="disclaimer-text">2. 反馈提交后进入审核，审核通过后公开展示。</text>
       <text class="disclaimer-text">3. 本站为信息聚合平台，内容仅供参考。</text>
+      <text class="disclaimer-text">4. 你的身份信息不会公开，请放心提交。</text>
     </view>
 
     <button class="submit-btn" @click="doSubmit" :disabled="submitting">
@@ -92,11 +93,14 @@ function onDateChange(e) {
 }
 
 function chooseImage() {
+  console.log('chooseImage called')
   uni.chooseImage({
     count: 3 - images.value.length,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: async (res) => {
+      console.log('chooseImage success, temp paths:', res.tempFilePaths)
+      uni.showLoading({ title: '上传中...' })
       for (const path of res.tempFilePaths) {
         try {
           const cloudPath = `review-images/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`
@@ -105,11 +109,17 @@ function chooseImage() {
             filePath: path
           })
           images.value.push(uploadRes.fileID)
+          console.log('upload success, fileID:', uploadRes.fileID)
         } catch (err) {
           console.error('上传失败:', err)
-          uni.showToast({ title: '图片上传失败', icon: 'none' })
+          uni.showToast({ title: '图片上传失败: ' + (err.errMsg || err.message || ''), icon: 'none' })
         }
       }
+      uni.hideLoading()
+    },
+    fail: (err) => {
+      console.error('chooseImage fail:', err)
+      uni.showToast({ title: '选择图片失败', icon: 'none' })
     }
   })
 }
@@ -121,7 +131,10 @@ function removeImage(idx) {
 function previewImage(idx) {
   uni.previewImage({
     urls: images.value,
-    current: images.value[idx]
+    current: String(images.value[idx]),
+    fail: (err) => {
+      console.error('previewImage fail:', err)
+    }
   })
 }
 
@@ -134,11 +147,6 @@ async function doSubmit() {
   const validation = preValidate(content.value)
   if (!validation.valid) {
     uni.showToast({ title: validation.msg, icon: 'none' })
-    return
-  }
-
-  if (!discoveryDate.value) {
-    uni.showToast({ title: '请选择发现日期', icon: 'none' })
     return
   }
 
@@ -157,7 +165,37 @@ async function doSubmit() {
 
     if (res.result && res.result.code === 0) {
       uni.showToast({ title: '提交成功，审核后展示', icon: 'success' })
-      setTimeout(() => { uni.navigateBack() }, 1500)
+
+      const reviewId = res.result.data?.reviewId
+      if (reviewId) {
+        try {
+          const tmplId = 'QCXWPP2a79qUfchm7Rfg0c3E4HY_Vi1hhLE3X1R3bKk'
+          const subRes = await wx.requestSubscribeMessage({ tmplIds: [tmplId] })
+          if (subRes[tmplId] === 'accept') {
+            await wx.cloud.callFunction({
+              name: 'mark-review-subscribed',
+              data: { reviewId }
+            })
+          }
+        } catch { /* 用户拒绝或失败，不影响主流程 */ }
+      }
+
+      setTimeout(() => {
+        uni.showModal({
+          title: '提交成功',
+          content: '你的反馈已提交，正在审核中。你可以在"我的"页面查看审核进度。',
+          showCancel: true,
+          cancelText: '稍后再看',
+          confirmText: '查看反馈状态',
+          success: (modalRes) => {
+            if (modalRes.confirm) {
+              uni.switchTab({ url: '/pages/my/index' })
+            } else {
+              uni.navigateBack()
+            }
+          }
+        })
+      }, 800)
     } else {
       uni.showToast({ title: res.result?.msg || '提交失败', icon: 'none' })
     }
@@ -173,51 +211,57 @@ async function doSubmit() {
 <style lang="scss" scoped>
 .page {
   min-height: 100vh;
-  background: $bg-color;
+  background: var(--bg-color);
   padding-bottom: 60rpx;
 }
 
 .form-section {
-  background: #fff;
-  margin-bottom: $spacing-md;
+  background: var(--bg-white);
+  margin: $spacing-md;
+  border-radius: $radius;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
 .form-item {
   padding: $spacing-md;
-  border-bottom: 1rpx solid $border-color;
+  border-bottom: 1rpx solid var(--border-color);
+
+  &:last-child { border-bottom: none; }
 }
 
 .form-label {
   display: block;
-  font-size: 28rpx;
+  font-size: $font-md;
   font-weight: 600;
-  color: $text-color;
-  margin-bottom: 12rpx;
+  color: var(--text-color);
+  margin-bottom: $spacing-sm;
 }
 
 .form-value {
-  font-size: 28rpx;
-  color: $text-color;
+  font-size: $font-md;
+  color: var(--text-secondary);
 }
 
 .picker-value {
-  font-size: 28rpx;
-  color: $primary-color;
+  font-size: $font-md;
+  color: var(--primary-color);
 }
 
 .form-item-textarea {
   .form-textarea {
     width: 100%;
     height: 200rpx;
-    font-size: 28rpx;
+    font-size: $font-md;
     line-height: 1.6;
+    color: var(--text-color);
   }
 
   .char-count {
     text-align: right;
-    font-size: 22rpx;
-    color: $text-light;
-    margin-top: 8rpx;
+    font-size: $font-xs;
+    color: var(--text-muted);
+    margin-top: $spacing-xs;
   }
 }
 
@@ -235,7 +279,7 @@ async function doSubmit() {
   .preview-img {
     width: 100%;
     height: 100%;
-    border-radius: 8rpx;
+    border-radius: $radius-sm;
   }
 
   .delete-icon {
@@ -244,33 +288,37 @@ async function doSubmit() {
     right: -12rpx;
     width: 40rpx;
     height: 40rpx;
-    background: $danger-color;
+    background: var(--danger-color);
     color: #fff;
     border-radius: 50%;
     text-align: center;
     line-height: 40rpx;
     font-size: 28rpx;
+    box-shadow: var(--shadow-sm);
   }
 }
 
 .image-add {
   width: 160rpx;
   height: 160rpx;
-  border: 2rpx dashed #ccc;
-  border-radius: 8rpx;
+  border: 2rpx dashed var(--text-muted);
+  border-radius: $radius-sm;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  transition: border-color var(--transition);
+
+  &:active { border-color: var(--primary-color); }
 
   .add-icon {
     font-size: 48rpx;
-    color: #ccc;
+    color: var(--text-muted);
   }
 
   .add-text {
-    font-size: 22rpx;
-    color: #ccc;
+    font-size: $font-xs;
+    color: var(--text-muted);
     margin-top: 4rpx;
   }
 }
@@ -278,31 +326,33 @@ async function doSubmit() {
 .disclaimer-box {
   margin: 0 $spacing-md $spacing-md;
   padding: $spacing-md;
-  background: #fffbe6;
+  background: var(--primary-light);
   border-radius: $radius;
 
   .disclaimer-title {
     display: block;
-    font-size: 26rpx;
+    font-size: $font-sm;
     font-weight: 600;
-    color: #b8860b;
-    margin-bottom: 8rpx;
+    color: var(--primary-dark);
+    margin-bottom: $spacing-xs;
   }
 
   .disclaimer-text {
     display: block;
-    font-size: 22rpx;
-    color: #8b7355;
+    font-size: $font-xs;
+    color: var(--text-secondary);
     line-height: 1.8;
   }
 }
 
 .submit-btn {
   margin: 0 $spacing-md;
-  background: $primary-color;
+  background: var(--primary-color);
   color: #fff;
-  font-size: 30rpx;
-  border-radius: 40rpx;
+  font-size: $font-lg;
+  border-radius: $radius-round;
   padding: 24rpx 0;
+  font-weight: 500;
+  box-shadow: 0 4rpx 12rpx rgba(253, 94, 2, 0.3);
 }
 </style>

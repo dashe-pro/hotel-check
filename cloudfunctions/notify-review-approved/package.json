@@ -1,0 +1,8 @@
+{
+  "name": "notify-review-approved",
+  "version": "1.0.0",
+  "description": "Send subscribe message when a review is approved",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

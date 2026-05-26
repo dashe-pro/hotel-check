@@ -1,0 +1,8 @@
+{
+  "name": "search-suggest",
+  "version": "1.0.0",
+  "description": "Search autocomplete suggestions and hot words",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "mark-review-subscribed",
+  "version": "1.0.0",
+  "description": "Mark a review as having message subscription authorization",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

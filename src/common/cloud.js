@@ -1,6 +1,6 @@
 // 云开发能力封装
 
-const envId = 'YOUR-ENV-ID'
+const envId = 'cloud1-d2gnannt0b0619333'
 
 // 调用云函数
 export function callCloudFunction(name, data = {}) {
@@ -41,7 +41,7 @@ export function uploadImage(filePath) {
 export function getUserProfile() {
   return new Promise((resolve, reject) => {
     wx.getUserProfile({
-      desc: '用于展示您的评论身份'
+      desc: '用于展示您的反馈身份'
     }).then((res) => {
       resolve(res.userInfo)
     }).catch(() => {

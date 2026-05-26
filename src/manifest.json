@@ -1,12 +1,12 @@
 {
-  "name": "酒店安全查询",
+  "name": "住前查",
   "appid": "__UNI__HOTELCHECK",
-  "description": "入住前查一查，酒店偷拍信息聚合平台",
+  "description": "酒店安全信息聚合，入住前查一查更安心",
   "versionName": "1.0.0",
   "versionCode": "100",
   "transformPx": false,
   "mp-weixin": {
-    "appid": "YOUR-APPID",
+    "appid": "wxed77960951c9c3f2",
     "setting": {
       "urlCheck": false,
       "es6": true,
@@ -14,7 +14,7 @@
     },
     "usingComponents": true,
     "cloudfunctionRoot": "cloudfunctions/",
-    "__usePrivacyCheck__": true
+    "__usePrivacyCheck__": false
   },
   "vueVersion": "3"
 }

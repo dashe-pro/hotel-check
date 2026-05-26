@@ -1,0 +1,8 @@
+{
+  "name": "vote-review",
+  "version": "1.0.0",
+  "description": "Vote on hotel review usefulness",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

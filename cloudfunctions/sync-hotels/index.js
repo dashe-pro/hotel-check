@@ -4,13 +4,20 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const https = require('https')
 
-const AMAP_KEY = 'YOUR-AMAP-KEY'
+const AMAP_KEY = 'a91a5e948233b056f9981f5401cf3875'
 
 const CITIES = [
   '北京', '上海', '广州', '深圳', '杭州', '成都', '重庆',
   '武汉', '西安', '南京', '长沙', '郑州', '天津', '苏州',
-  '厦门', '青岛', '大连', '昆明', '三亚', '丽江', '大理'
+  '厦门', '青岛', '大连', '昆明', '三亚', '丽江', '大理',
+  '东莞', '佛山', '合肥', '福州', '贵阳', '哈尔滨', '海口',
+  '呼和浩特', '济南', '拉萨', '兰州', '南昌', '南宁', '宁波',
+  '沈阳', '石家庄', '太原', '乌鲁木齐', '无锡', '温州', '银川',
+  '长春', '珠海', '桂林', '烟台', '扬州', '洛阳', '九江',
+  '黄山', '张家界', '秦皇岛', '威海', '北海', '西双版纳'
 ]
+
+const PAGES = 8
 
 exports.main = async () => {
   let totalAdded = 0
@@ -18,16 +25,26 @@ exports.main = async () => {
   for (const city of CITIES) {
     try {
       const hotels = await fetchHotelsFromAmap(city)
-      for (const h of hotels) {
-        const exist = await db.collection('hotels')
-          .where({ name: h.name, address: h.address })
-          .count()
+      if (hotels.length === 0) continue
 
-        if (exist.total === 0) {
+      const names = hotels.map(h => h.name)
+      const existing = await db.collection('hotels')
+        .where({ name: db.command.in(names) })
+        .field({ name: true })
+        .get()
+      const existingNames = new Set(existing.data.map(h => h.name))
+
+      for (const h of hotels) {
+        if (!existingNames.has(h.name)) {
           await db.collection('hotels').add({
             data: {
               name: h.name,
+              city: h.city,
               address: h.address,
+              rating: h.rating,
+              photos: h.photos,
+              tel: h.tel,
+              location: h.location,
               hasCase: false,
               caseCount: 0,
               reviewCount: 0,
@@ -46,26 +63,46 @@ exports.main = async () => {
 }
 
 function fetchHotelsFromAmap(city) {
+  const requests = []
+  for (let page = 1; page <= PAGES; page++) {
+    requests.push(fetchPage(city, page))
+  }
+  return Promise.all(requests).then(results => results.flat())
+}
+
+function fetchPage(city, page) {
   return new Promise((resolve) => {
-    const url = `https://restapi.amap.com/v5/place/text?key=${AMAP_KEY}&keywords=酒店&types=100000&region=${encodeURIComponent(city)}&city_limit=true&page_size=25`
+    const url = `https://restapi.amap.com/v5/place/text?key=${AMAP_KEY}&keywords=酒店&types=100100&region=${encodeURIComponent(city)}&city_limit=true&page_size=25&page=${page}`
+    console.log(`Fetching: ${city} page ${page}`)
     https.get(url, (res) => {
       let data = ''
       res.on('data', chunk => { data += chunk })
       res.on('end', () => {
         try {
           const json = JSON.parse(data)
-          if (json.status === '1' && json.pois) {
+          if (json.status === '1' && json.pois && json.pois.length > 0) {
             resolve(json.pois.map(p => ({
               name: p.name,
-              address: `${p.pname || ''}${p.cityname || ''}${p.adname || ''}${p.address || ''}`
+              city: p.cityname || '',
+              address: `${p.pname || ''}${p.cityname || ''}${p.adname || ''}${p.address || ''}`,
+              rating: (p.biz_ext && p.biz_ext.rating) || '',
+              photos: (p.photos && Array.isArray(p.photos))
+                ? p.photos.slice(0, 5).map(ph => (typeof ph === 'string' ? ph : ph.url))
+                : [],
+              tel: p.tel || '',
+              location: (p.location && typeof p.location === 'string') ? p.location : null
             })))
           } else {
             resolve([])
           }
-        } catch (_) {
+        } catch (e) {
+          console.error(`${city} page ${page} JSON parse error:`, e.message)
           resolve([])
         }
       })
-    }).on('error', () => resolve([]))
+    }).on('error', (e) => {
+      console.error(`${city} page ${page} https error:`, e.message)
+      resolve([])
+    })
   })
 }

@@ -1,0 +1,8 @@
+{
+  "name": "reset-cases",
+  "version": "1.0.0",
+  "description": "Reset all case and alert reviews and hotel flags",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

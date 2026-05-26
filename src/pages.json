@@ -3,7 +3,7 @@
     {
       "path": "pages/index/index",
       "style": {
-        "navigationBarTitleText": "酒店安全查询",
+        "navigationBarTitleText": "住前查",
         "navigationBarBackgroundColor": "#FFFFFF",
         "navigationBarTextStyle": "black"
       }
@@ -27,7 +27,7 @@
     {
       "path": "pages/submit-review/index",
       "style": {
-        "navigationBarTitleText": "提交评论",
+        "navigationBarTitleText": "提交反馈",
         "navigationBarBackgroundColor": "#FFFFFF",
         "navigationBarTextStyle": "black"
       }
@@ -37,13 +37,49 @@
       "style": {
         "navigationBarTitleText": "我的",
         "navigationBarBackgroundColor": "#FFFFFF",
+        "navigationBarTextStyle": "black",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/compare/index",
+      "style": {
+        "navigationBarTitleText": "酒店对比",
+        "navigationBarBackgroundColor": "#FFFFFF",
         "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/map/index",
+      "style": {
+        "navigationBarTitleText": "风险地图",
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "navigationBarTextStyle": "black",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/review-detail/index",
+      "style": {
+        "navigationBarTitleText": "反馈详情",
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "navigationBarTextStyle": "black",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/appeal/index",
+      "style": {
+        "navigationBarTitleText": "申诉/纠错",
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "navigationBarTextStyle": "black",
+        "enablePullDownRefresh": false
       }
     }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "酒店安全查询",
+    "navigationBarTitleText": "住前查",
     "navigationBarBackgroundColor": "#FFFFFF",
     "backgroundColor": "#F5F5F5"
   },

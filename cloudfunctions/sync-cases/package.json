@@ -1,0 +1,8 @@
+{
+  "name": "sync-cases",
+  "version": "1.0.0",
+  "description": "Sync public hotel hidden camera cases from news reports",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}
