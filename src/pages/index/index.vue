@@ -12,7 +12,16 @@
         <text class="title-text">最新评论</text>
       </view>
 
-      <view v-if="recentReviews.length > 0" class="review-list">
+      <view v-if="loading" class="loading-state">
+        <text>加载中...</text>
+      </view>
+
+      <view v-else-if="error" class="empty-state">
+        <text class="empty-text">加载失败</text>
+        <text class="empty-hint">请下拉刷新重试</text>
+      </view>
+
+      <view v-else-if="recentReviews.length > 0" class="review-list">
         <view
           v-for="item in recentReviews"
           :key="item._id"
@@ -37,11 +46,16 @@ import { ref, onMounted } from 'vue'
 import dayjs from 'dayjs'
 
 const recentReviews = ref([])
+const loading = ref(true)
+const error = ref(false)
 
 function formatTimeAgo(dateStr) {
-  const now = dayjs()
+  if (!dateStr) return ''
   const created = dayjs(dateStr)
+  if (!created.isValid()) return ''
+  const now = dayjs()
   const days = now.diff(created, 'day')
+  if (days < 0) return ''
   if (days === 0) return '今天'
   if (days === 1) return '昨天'
   if (days < 30) return `${days}天前`
@@ -76,6 +90,9 @@ onMounted(async () => {
     }
   } catch (err) {
     console.error('获取最新评论失败:', err)
+    error.value = true
+  } finally {
+    loading.value = false
   }
 })
 
@@ -103,7 +120,7 @@ function goDetail(hotelId) {
   display: flex;
   align-items: center;
   height: 80rpx;
-  background: #f5f5f5;
+  background: $bg-color;
   border-radius: 40rpx;
   padding: 0 $spacing-md;
 }
@@ -149,7 +166,7 @@ function goDetail(hotelId) {
 
 .item-content {
   font-size: 26rpx;
-  color: #666;
+  color: $text-light;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
