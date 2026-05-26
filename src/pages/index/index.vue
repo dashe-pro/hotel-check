@@ -154,7 +154,10 @@ onMounted(async () => {
   try {
     const db = wx.cloud.database()
     const res = await db.collection('reviews')
-      .where({ status: 'approved' })
+      .where({
+        status: 'approved',
+        hotelId: db.command.neq(null)
+      })
       .orderBy('createdAt', 'desc')
       .limit(20)
       .get()
@@ -199,6 +202,7 @@ function goMap() {
 }
 
 function goDetail(hotelId) {
+  if (!hotelId) return
   uni.navigateTo({ url: `/pages/hotel-detail/index?id=${hotelId}` })
 }
 </script>
