@@ -1,0 +1,1 @@
+{"name":"submit-review","version":"1.0.0","description":"提交评论云函数（含内容安全审核）","main":"index.js","dependencies":{"wx-server-sdk":"latest"}}
