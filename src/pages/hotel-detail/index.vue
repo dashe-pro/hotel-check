@@ -28,11 +28,16 @@
         <text class="empty-text">该酒店暂无相关记录</text>
         <text class="empty-hint">如果您了解相关情况，欢迎提交评论</text>
       </view>
-
-      <view class="disclaimer">
-        <text class="disclaimer-text">免责声明：本站展示内容为用户自发分享和公开信息聚合，仅供参考，本站不对评论真实性负责。</text>
-      </view>
     </template>
+
+    <view v-else class="error-state">
+      <text class="error-text">加载失败</text>
+      <text class="error-hint">请返回重试</text>
+    </view>
+
+    <view class="disclaimer">
+      <text class="disclaimer-text">免责声明：本站展示内容为用户自发分享和公开信息聚合，仅供参考，本站不对评论真实性负责。</text>
+    </view>
 
     <view class="bottom-bar">
       <button class="submit-btn" @click="goSubmit">我要评论 / 举报</button>
@@ -155,6 +160,24 @@ function goSubmit() {
   padding: 200rpx 0;
   font-size: 28rpx;
   color: $text-light;
+}
+
+.error-state {
+  text-align: center;
+  padding: 200rpx 0;
+
+  .error-text {
+    font-size: 30rpx;
+    color: $text-color;
+    display: block;
+  }
+
+  .error-hint {
+    font-size: 26rpx;
+    color: $text-light;
+    display: block;
+    margin-top: 12rpx;
+  }
 }
 
 .bottom-bar {
