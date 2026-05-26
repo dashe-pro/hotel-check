@@ -14,8 +14,8 @@
     </view>
     <view v-if="images && images.length > 0" class="review-images">
       <image
-        v-for="(img, idx) in images"
-        :key="idx"
+        v-for="img in images"
+        :key="img"
         :src="img"
         mode="aspectFill"
         class="review-image"
@@ -32,7 +32,7 @@ import { computed } from 'vue'
 import dayjs from 'dayjs'
 
 const props = defineProps({
-  type: { type: String, default: 'user' },
+  type: { type: String, default: 'user', validator: (v) => ['user', 'case'].includes(v) },
   content: { type: String, default: '' },
   discoveryDate: { type: String, default: '' },
   source: { type: String, default: '' },
@@ -42,13 +42,16 @@ const props = defineProps({
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
-  return dayjs(dateStr).format('YYYY年MM月DD日')
+  const d = dayjs(dateStr)
+  if (!d.isValid()) return ''
+  return d.format('YYYY年MM月DD日')
 }
 
 const timeAgo = computed(() => {
   if (!props.createdAt) return ''
   const now = dayjs()
   const created = dayjs(props.createdAt)
+  if (!created.isValid()) return ''
   const days = now.diff(created, 'day')
   if (days === 0) return '今天'
   if (days === 1) return '昨天'
