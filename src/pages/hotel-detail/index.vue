@@ -45,6 +45,24 @@
         </view>
       </view>
 
+      <view v-if="alerts.length > 0" class="alerts-section">
+        <view class="section-label">品牌相关警示（{{ alerts.length }}条）</view>
+        <text class="alerts-hint">以下为同品牌酒店集团的公开报道，非本店个案，仅供参考</text>
+        <review-card
+          v-for="item in alerts"
+          :key="item._id"
+          :reviewId="item._id"
+          type="alert"
+          :content="item.content"
+          :discoveryDate="item.discoveryDate"
+          :source="item.source"
+          :images="item.images"
+          :createdAt="item.createdAt"
+          :upvotes="0"
+          :downvotes="0"
+        />
+      </view>
+
       <view v-if="reviews.length > 0" class="reviews-section">
         <view v-if="hotelReviews.length > 0" class="section-label">相关记录（{{ hotelReviews.length }}条）</view>
         <review-card
@@ -62,7 +80,7 @@
         />
       </view>
 
-      <view v-else class="safe-badge">
+      <view v-else-if="alerts.length === 0" class="safe-badge">
         <view class="safe-icon-wrap">
           <text class="safe-icon">✓</text>
         </view>
@@ -107,15 +125,15 @@ import { addFavorite, removeFavorite, isFavorite } from '@/common/favorites.js'
 const loading = ref(true)
 const hotel = ref(null)
 const reviews = ref([])
+const alerts = ref([])
 const hotelId = ref('')
 const isFaved = ref(false)
 const hotelReviews = computed(() => reviews.value.filter(r => r.type !== 'alert'))
 
 onShareAppMessage(() => {
   const name = hotel.value?.name || '酒店详情'
-  const status = hotelReviews.value.length > 0
-    ? `已有${hotelReviews.value.length}条反馈`
-    : '暂未发现风险'
+  const count = hotelReviews.value.length + alerts.value.length
+  const status = count > 0 ? `已有${count}条相关记录` : '暂未发现风险'
   return {
     title: `${name} - ${status} - 住前查`,
     path: `/pages/hotel-detail/index?id=${hotelId.value}`
@@ -147,6 +165,7 @@ onLoad(async (options) => {
     if (res.result && res.result.code === 0) {
       hotel.value = res.result.data.hotel
       reviews.value = res.result.data.reviews
+      alerts.value = res.result.data.alerts || []
       addToHistory(hotel.value)
       isFaved.value = isFavorite(hotelId.value)
     }
@@ -232,6 +251,21 @@ function goAppeal() {
   .hotel-address {
     font-size: $font-sm;
     color: var(--text-muted);
+  }
+}
+
+.alerts-section {
+  padding: 0 $spacing-md;
+  margin-bottom: $spacing-md;
+
+  .alerts-hint {
+    display: block;
+    font-size: $font-xs;
+    color: var(--text-muted);
+    margin-bottom: $spacing-sm;
+    padding: $spacing-xs $spacing-sm;
+    background: #fff3cd;
+    border-radius: $radius-sm;
   }
 }
 

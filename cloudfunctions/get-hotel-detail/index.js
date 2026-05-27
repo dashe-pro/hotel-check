@@ -17,6 +17,8 @@ exports.main = async (event) => {
       return { code: 2, msg: '酒店不存在' }
     }
 
+    const hotelName = hotel.name || ''
+
     // 公开案件：按发现日期倒序
     const casesRes = await db.collection('reviews')
       .where({
@@ -39,6 +41,22 @@ exports.main = async (event) => {
       .limit(50)
       .get()
 
+    // 品牌相关警示：查询所有 alert，按品牌关键词匹配酒店名
+    const alertsRes = await db.collection('reviews')
+      .where({
+        type: 'alert',
+        status: 'approved'
+      })
+      .orderBy('discoveryDate', 'desc')
+      .limit(50)
+      .get()
+
+    const matchedAlerts = (alertsRes.data || []).filter(alert => {
+      return (alert.brands || []).some(brand =>
+        hotelName.toLowerCase().includes(brand.toLowerCase())
+      )
+    })
+
     const userReviews = (reviewsRes.data || []).sort((a, b) => {
       return (b.upvotes || 0) - (a.upvotes || 0)
     })
@@ -50,7 +68,8 @@ exports.main = async (event) => {
         reviews: [
           ...(casesRes.data || []),
           ...userReviews
-        ]
+        ],
+        alerts: matchedAlerts
       }
     }
   } catch (err) {
