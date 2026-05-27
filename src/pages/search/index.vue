@@ -262,14 +262,17 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   height: 56rpx;
-  min-width: calc((100% - 36rpx) / 4);
-  padding: 0 12rpx;
+  width: calc((100% - 60rpx) / 6);
+  padding: 0 8rpx;
   border-radius: $radius-sm;
   background: var(--bg-color);
-  font-size: $font-sm;
+  font-size: $font-xs;
   color: var(--text-secondary);
   box-sizing: border-box;
   transition: all var(--transition);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 
   &:active { transform: scale(0.95); }
 }
