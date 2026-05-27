@@ -9,7 +9,7 @@ exports.main = async () => {
       db.collection('hotels').count(),
       db.collection('reviews').where({ status: 'approved', type: 'user' }).count(),
       db.collection('reviews').where({ type: 'case', status: 'approved' }).count(),
-      db.collection('hotels').where({ city: _.neq(null).and(_.neq('')) }).field({ city: true }).limit(500).get()
+      db.collection('hotels').field({ city: true }).limit(1000).get()
     ])
     const citySet = new Set()
     ;(citiesRes.data || []).forEach(h => { if (h.city) citySet.add(h.city.trim()) })
