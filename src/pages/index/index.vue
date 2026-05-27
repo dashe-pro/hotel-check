@@ -156,7 +156,7 @@ onMounted(async () => {
     const res = await db.collection('reviews')
       .where({
         status: 'approved',
-        hotelId: db.command.neq(null)
+        type: 'user'
       })
       .orderBy('createdAt', 'desc')
       .limit(20)

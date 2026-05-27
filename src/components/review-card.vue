@@ -1,5 +1,5 @@
 <template>
-  <view class="review-card" @click="goDetail">
+  <view class="review-card">
     <view class="review-header">
       <view class="review-type">
         <text v-if="type === 'alert'" class="tag tag-alert">行业警示</text>
@@ -75,11 +75,6 @@ async function doVote(voteType) {
   } catch (err) {
     uni.showToast({ title: '网络错误', icon: 'none' })
   }
-}
-
-function goDetail() {
-  if (!props.reviewId) return
-  uni.navigateTo({ url: `/pages/review-detail/index?id=${props.reviewId}` })
 }
 
 function previewImage(idx) {

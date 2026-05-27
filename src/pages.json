@@ -59,15 +59,6 @@
       }
     },
     {
-      "path": "pages/review-detail/index",
-      "style": {
-        "navigationBarTitleText": "反馈详情",
-        "navigationBarBackgroundColor": "#FFFFFF",
-        "navigationBarTextStyle": "black",
-        "enablePullDownRefresh": false
-      }
-    },
-    {
       "path": "pages/appeal/index",
       "style": {
         "navigationBarTitleText": "申诉/纠错",

@@ -56,13 +56,13 @@ const CASES = [
   { brands: ['维也纳国际'], matchMode: 'precise', city: '福州', hotelName: '维也纳国际', content: '2022年福州维也纳国际酒店客房烟雾探测器内发现针孔摄像头，酒店称系个别前住客非法安装，已全面排查。', discoveryDate: '2022-07-11', source: '海峡都市报' },
 
   // ==================== 皇冠假日 ====================
-  { brands: ['皇冠假日', '皇冠'], matchMode: 'precise', city: '青岛', hotelName: '皇冠假日', content: '2018年青岛某皇冠假日酒店客房被发现装有针孔摄像头，设备伪装在火灾报警器中，酒店配合警方展开调查。', discoveryDate: '2018-05-20', source: '半岛都市报' },
+  { brands: ['皇冠假日'], matchMode: 'precise', city: '青岛', hotelName: '皇冠假日', content: '2018年青岛某皇冠假日酒店客房被发现装有针孔摄像头，设备伪装在火灾报警器中，酒店配合警方展开调查。', discoveryDate: '2018-05-20', source: '半岛都市报' },
 
   // ==================== 喜来登 ====================
   { brands: ['喜来登'], matchMode: 'precise', city: '深圳', hotelName: '喜来登', content: '2020年深圳喜来登酒店客房卧室电视机下方发现隐藏式摄像头，酒店方表示系个别员工与他人勾结所为，已开除相关员工并报警。', discoveryDate: '2020-09-10', source: '深圳特区报' },
 
   // ==================== 洲际 ====================
-  { brands: ['洲际', '皇冠假日', '假日'], matchMode: 'precise', city: '北京', hotelName: '洲际', content: '2019年北京洲际酒店集团旗下酒店被曝客房安全漏洞，有住客在插座面板后发现微型摄像头，集团承诺加强安防措施。', discoveryDate: '2019-06-28', source: '中国旅游报' },
+  { brands: ['洲际', '皇冠假日'], matchMode: 'precise', city: '北京', hotelName: '洲际', content: '2019年北京洲际酒店集团旗下酒店被曝客房安全漏洞，有住客在插座面板后发现微型摄像头，集团承诺加强安防措施。', discoveryDate: '2019-06-28', source: '中国旅游报' },
 
   // ==================== 凯宾斯基 ====================
   { brands: ['凯宾斯基'], matchMode: 'precise', city: '重庆', hotelName: '凯宾斯基', content: '2021年重庆凯宾斯基酒店客房浴室镜子后发现隐蔽摄像头，警方调查发现系团伙作案，已抓获多名涉案人员。', discoveryDate: '2021-10-08', source: '重庆晨报' },
@@ -86,7 +86,7 @@ const CASES = [
   { brands: ['开元'], matchMode: 'precise', city: '杭州', hotelName: '开元', content: '2020年杭州开元名都大酒店客房浴室换气扇中发现防水微型摄像头，酒店配合警方调查并对旗下酒店全面排查。', discoveryDate: '2020-02-16', source: '浙江日报' },
 
   // ==================== 万达 ====================
-  { brands: ['万达', '嘉华', '文华'], matchMode: 'precise', city: '成都', hotelName: '万达', content: '2021年成都万达酒店客房被曝电视机后方发现隐藏摄像头，酒店方表示已第一时间更换管理层并加强安全管理。', discoveryDate: '2021-05-20', source: '四川日报' },
+  { brands: ['万达'], matchMode: 'precise', city: '成都', hotelName: '万达', content: '2021年成都万达酒店客房被曝电视机后方发现隐藏摄像头，酒店方表示已第一时间更换管理层并加强安全管理。', discoveryDate: '2021-05-20', source: '四川日报' },
 
   // ==================== 索菲特 ====================
   { brands: ['索菲特'], matchMode: 'precise', city: '昆明', hotelName: '索菲特', content: '2019年昆明索菲特大酒店客房装饰摆件中发现针孔摄像头，涉事酒店启动应急响应机制并配合警方开展调查。', discoveryDate: '2019-03-10', source: '云南日报' },
