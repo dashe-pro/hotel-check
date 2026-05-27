@@ -97,11 +97,20 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue'
 
-const cities = [
-  '全国', '北京', '上海', '广州', '深圳', '杭州', '成都', '重庆',
-  '武汉', '西安', '南京', '长沙', '郑州', '天津', '苏州',
-  '厦门', '青岛', '大连', '昆明', '三亚', '丽江', '大理'
-]
+const cities = ref(['全国'])
+
+async function loadCities() {
+  try {
+    const res = await wx.cloud.callFunction({ name: 'get-stats' })
+    if (res.result?.code === 0 && res.result.data.cities?.length) {
+      cities.value = ['全国', ...res.result.data.cities]
+    } else {
+      cities.value = ['全国', '北京', '上海', '广州', '深圳', '杭州', '成都', '重庆', '武汉', '西安', '南京', '长沙', '郑州', '天津', '苏州', '厦门', '青岛', '大连', '昆明', '三亚', '丽江', '大理']
+    }
+  } catch {
+    cities.value = ['全国', '北京', '上海', '广州', '深圳', '杭州', '成都', '重庆', '武汉', '西安', '南京', '长沙', '郑州', '天津', '苏州', '厦门', '青岛', '大连', '昆明', '三亚', '丽江', '大理']
+  }
+}
 
 const selectedCity = ref('全国')
 const keyword = ref('')
@@ -221,6 +230,7 @@ function quickSearch(name) {
 }
 
 onMounted(async () => {
+  loadCities()
   try {
     const res = await wx.cloud.callFunction({ name: 'search-suggest', data: { keyword: '' } })
     if (res.result?.code === 0) hotWords.value = res.result.data.hotWords || []
