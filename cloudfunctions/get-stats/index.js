@@ -3,14 +3,15 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
 exports.main = async () => {
-  try {
-    const [hotelsRes, reviewsRes, casesRes] = await Promise.all([
-      db.collection('hotels').count(),
-      db.collection('reviews').where({ status: 'approved', type: 'user' }).count(),
-      db.collection('reviews').where({ type: 'case', status: 'approved' }).count()
-    ])
+  const [hotelsRes, reviewsRes, casesRes] = await Promise.all([
+    db.collection('hotels').count(),
+    db.collection('reviews').where({ status: 'approved', type: 'user' }).count(),
+    db.collection('reviews').where({ type: 'case', status: 'approved' }).count()
+  ])
 
-    // 分页拉取全部酒店的城市字段，避免 limit 截断
+  // 城市列表：独立 try-catch，不影响统计数据返回
+  let cities = []
+  try {
     const citySet = new Set()
     let skip = 0
     const pageSize = 1000
@@ -25,18 +26,19 @@ exports.main = async () => {
       if (res.data.length < pageSize) break
       skip += pageSize
     }
-    const cities = Array.from(citySet).sort()
-
-    return {
-      code: 0,
-      data: {
-        hotelCount: hotelsRes.total,
-        reviewCount: reviewsRes.total,
-        caseCount: casesRes.total,
-        cities
-      }
-    }
+    cities = Array.from(citySet).sort()
   } catch (err) {
-    return { code: 500, msg: err.message }
+    console.error('get-stats cities error:', err.message)
+    // cities 为空数组，前端使用默认列表兜底
+  }
+
+  return {
+    code: 0,
+    data: {
+      hotelCount: hotelsRes.total,
+      reviewCount: reviewsRes.total,
+      caseCount: casesRes.total,
+      cities
+    }
   }
 }
