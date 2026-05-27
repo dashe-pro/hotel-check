@@ -152,45 +152,24 @@ function formatTimeAgo(dateStr) {
 
 onMounted(async () => {
   try {
-    const db = wx.cloud.database()
-    const res = await db.collection('reviews')
-      .where({
-        status: 'approved',
-        type: 'user'
-      })
-      .orderBy('createdAt', 'desc')
-      .limit(20)
-      .get()
-
-    if (res.data && res.data.length > 0) {
-      const hotelIds = [...new Set(res.data.map(r => r.hotelId))]
-      const hotelMap = {}
-
-      if (hotelIds.length > 0) {
-        const hotelRes = await db.collection('hotels')
-          .where({ _id: db.command.in(hotelIds) })
-          .get()
-        hotelRes.data.forEach(h => { hotelMap[h._id] = h.name })
+    const res = await wx.cloud.callFunction({ name: 'get-stats' })
+    if (res.result?.code === 0) {
+      const data = res.result.data
+      stats.value = data
+      if (data.recentReviews && data.recentReviews.length > 0) {
+        recentReviews.value = data.recentReviews.map(r => ({
+          ...r,
+          timeAgo: formatTimeAgo(r.createdAt)
+        }))
       }
-
-      recentReviews.value = res.data.map(r => ({
-        ...r,
-        hotelName: hotelMap[r.hotelId] || '未知酒店',
-        timeAgo: formatTimeAgo(r.createdAt)
-      }))
     }
   } catch (err) {
-    console.error('获取最新评论失败:', err)
+    console.error('首页加载失败:', err)
     error.value = true
   } finally {
     loading.value = false
   }
   historyList.value = getHistory()
-  wx.cloud.callFunction({ name: 'get-stats' }).then(res => {
-    if (res.result?.code === 0) {
-      stats.value = res.result.data
-    }
-  }).catch(() => {})
 })
 
 function goSearch() {
