@@ -66,6 +66,15 @@
         "navigationBarTextStyle": "black",
         "enablePullDownRefresh": false
       }
+    },
+    {
+      "path": "pages/privacy/index",
+      "style": {
+        "navigationBarTitleText": "隐私保护指引",
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "navigationBarTextStyle": "black",
+        "enablePullDownRefresh": false
+      }
     }
   ],
   "globalStyle": {

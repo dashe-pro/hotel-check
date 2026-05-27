@@ -81,6 +81,10 @@
         <text class="empty-text">暂无反馈记录</text>
       </view>
     </view>
+
+    <view class="footer-links">
+      <text class="footer-link" @click="goPrivacy">隐私保护指引</text>
+    </view>
   </view>
 </template>
 
@@ -175,6 +179,10 @@ function loadHistory() {
 
 function loadFavorites() {
   favorites.value = getFavorites()
+}
+
+function goPrivacy() {
+  uni.navigateTo({ url: '/pages/privacy/index' })
 }
 
 function doClearFavorites() {
@@ -452,6 +460,17 @@ if (saved) {
 
   .empty-text {
     font-size: $font-md;
+    color: var(--text-muted);
+  }
+}
+
+.footer-links {
+  text-align: center;
+  padding: $spacing-lg $spacing-md;
+  padding-bottom: calc($spacing-lg + env(safe-area-inset-bottom));
+
+  .footer-link {
+    font-size: $font-xs;
     color: var(--text-muted);
   }
 }

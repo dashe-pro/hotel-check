@@ -100,16 +100,25 @@ function chooseImage() {
     sourceType: ['album', 'camera'],
     success: async (res) => {
       console.log('chooseImage success, temp paths:', res.tempFilePaths)
-      uni.showLoading({ title: '上传中...' })
+      uni.showLoading({ title: '上传并检测中...' })
       for (const path of res.tempFilePaths) {
         try {
           const cloudPath = `review-images/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`
-          const uploadRes = await wx.cloud.uploadFile({
-            cloudPath,
-            filePath: path
+          const uploadRes = await wx.cloud.uploadFile({ cloudPath, filePath: path })
+          const fileID = uploadRes.fileID
+
+          // 内容安全检测
+          const checkRes = await wx.cloud.callFunction({
+            name: 'check-image',
+            data: { fileID }
           })
-          images.value.push(uploadRes.fileID)
-          console.log('upload success, fileID:', uploadRes.fileID)
+          if (checkRes.result && checkRes.result.code !== 0) {
+            uni.showToast({ title: checkRes.result.msg || '图片包含违规内容', icon: 'none' })
+            continue
+          }
+
+          images.value.push(fileID)
+          console.log('upload success, fileID:', fileID)
         } catch (err) {
           console.error('上传失败:', err)
           uni.showToast({ title: '图片上传失败: ' + (err.errMsg || err.message || ''), icon: 'none' })
