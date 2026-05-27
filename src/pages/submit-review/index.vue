@@ -166,6 +166,7 @@ async function doSubmit() {
       name: 'submit-review',
       data: {
         hotelId: hotelId.value,
+        hotelName: hotelName.value,
         content: content.value,
         discoveryDate: discoveryDate.value,
         images: images.value

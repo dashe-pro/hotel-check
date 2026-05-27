@@ -157,10 +157,32 @@ onMounted(async () => {
       const data = res.result.data
       stats.value = data
       if (data.recentReviews && data.recentReviews.length > 0) {
-        recentReviews.value = data.recentReviews.map(r => ({
+        const reviews = data.recentReviews.map(r => ({
           ...r,
           timeAgo: formatTimeAgo(r.createdAt)
         }))
+        // 为缺少 hotelName 的反馈通过 _id 精确查询补全（主键索引，不会超时）
+        const missingIds = [...new Set(
+          reviews.filter(r => !r.hotelName && r.hotelId).map(r => r.hotelId)
+        )]
+        if (missingIds.length > 0) {
+          try {
+            const db = wx.cloud.database()
+            const _ = db.command
+            const hotelsRes = await db.collection('hotels')
+              .where({ _id: _.in(missingIds) })
+              .field({ name: true })
+              .get()
+            const nameMap = {}
+            ;(hotelsRes.data || []).forEach(h => { nameMap[h._id] = h.name })
+            reviews.forEach(r => {
+              if (!r.hotelName && r.hotelId && nameMap[r.hotelId]) {
+                r.hotelName = nameMap[r.hotelId]
+              }
+            })
+          } catch {}
+        }
+        recentReviews.value = reviews
       }
     }
   } catch (err) {

@@ -102,14 +102,30 @@ const cities = ref(['全国'])
 async function loadCities() {
   try {
     const res = await wx.cloud.callFunction({ name: 'get-stats' })
-    if (res.result?.code === 0 && res.result.data.cities?.length) {
+    if (res.result?.code === 0 && res.result.data?.cities?.length) {
       cities.value = ['全国', ...res.result.data.cities]
-    } else {
-      cities.value = ['全国', '北京', '上海', '广州', '深圳', '杭州', '成都', '重庆', '武汉', '西安', '南京', '长沙', '郑州', '天津', '苏州', '厦门', '青岛', '大连', '昆明', '三亚', '丽江', '大理']
+      return
     }
-  } catch {
-    cities.value = ['全国', '北京', '上海', '广州', '深圳', '杭州', '成都', '重庆', '武汉', '西安', '南京', '长沙', '郑州', '天津', '苏州', '厦门', '青岛', '大连', '昆明', '三亚', '丽江', '大理']
+  } catch (err) {
+    console.error('loadCities via cloud function failed:', err)
   }
+
+  // 云函数失败或返回空，尝试客户端直接查（仅取 city 字段，无 where 无排序，轻量查询）
+  try {
+    const db = wx.cloud.database()
+    const res = await db.collection('hotels').field({ city: true }).limit(500).get()
+    const citySet = new Set()
+    ;(res.data || []).forEach(h => { if (h.city && h.city.trim()) citySet.add(h.city.trim()) })
+    const dbCities = Array.from(citySet).sort()
+    if (dbCities.length > 0) {
+      cities.value = ['全国', ...dbCities]
+      return
+    }
+  } catch (e) {
+    console.error('loadCities direct query failed:', e)
+  }
+
+  cities.value = ['全国', '北京', '上海', '广州', '深圳', '杭州', '成都', '重庆', '武汉', '西安', '南京', '长沙', '郑州', '天津', '苏州', '厦门', '青岛', '大连', '昆明', '三亚', '丽江', '大理']
 }
 
 const selectedCity = ref('全国')

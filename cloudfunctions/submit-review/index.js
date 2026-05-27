@@ -4,7 +4,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
 exports.main = async (event, context) => {
-  const { hotelId, content, discoveryDate, images = [] } = event
+  const { hotelId, hotelName, content, discoveryDate, images = [] } = event
   const { OPENID } = cloud.getWXContext()
 
   if (!OPENID) {
@@ -57,6 +57,7 @@ exports.main = async (event, context) => {
     const res = await db.collection('reviews').add({
       data: {
         hotelId,
+        hotelName: hotelName || '',
         content: content.trim(),
         discoveryDate: discoveryDate || '',
         images,
