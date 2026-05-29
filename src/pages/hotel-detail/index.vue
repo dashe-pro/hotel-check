@@ -24,8 +24,7 @@
       <view v-if="hotel.rating || hotel.tel || (hotel.photos && hotel.photos.length)" class="hotel-info">
         <view v-if="hotel.rating" class="info-row">
           <text class="info-label">评分</text>
-          <text class="rating-stars">{{ '★'.repeat(Math.floor(hotel.rating)) }}{{ '☆'.repeat(5 - Math.floor(hotel.rating)) }}</text>
-          <text class="rating-num">{{ hotel.rating }}分</text>
+          <text class="rating-stars">{{ starsDisplay }}</text>
         </view>
         <view v-if="hotel.tel" class="info-row">
           <text class="info-label">电话</text>
@@ -129,6 +128,13 @@ const alerts = ref([])
 const hotelId = ref('')
 const isFaved = ref(false)
 const hotelReviews = computed(() => reviews.value.filter(r => r.type !== 'alert'))
+const starsDisplay = computed(() => {
+  const r = Number(hotel.value?.rating)
+  if (!r || r < 0) return '暂无评分'
+  const full = Math.floor(r)
+  const empty = 5 - full
+  return '★'.repeat(full) + '☆'.repeat(Math.max(0, empty)) + ' ' + r.toFixed(1) + '分'
+})
 
 onShareAppMessage(() => {
   const name = hotel.value?.name || '酒店详情'
@@ -148,14 +154,17 @@ onShareTimeline(() => {
   }
 })
 
-onLoad(async (options) => {
+onLoad((options) => {
   hotelId.value = options.id
   if (!hotelId.value) {
     uni.showToast({ title: '参数错误', icon: 'none' })
     uni.navigateBack()
     return
   }
+  loadDetail()
+})
 
+async function loadDetail() {
   try {
     const res = await wx.cloud.callFunction({
       name: 'get-hotel-detail',
@@ -175,7 +184,7 @@ onLoad(async (options) => {
   } finally {
     loading.value = false
   }
-})
+}
 
 function callHotel() {
   if (hotel.value?.tel) {

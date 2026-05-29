@@ -19,37 +19,24 @@ exports.main = async (event) => {
 
     const hotelName = hotel.name || ''
 
-    // 公开案件：按发现日期倒序
-    const casesRes = await db.collection('reviews')
-      .where({
-        hotelId,
-        type: 'case',
-        status: 'approved'
-      })
-      .orderBy('discoveryDate', 'desc')
-      .limit(20)
-      .get()
-
-    // 用户反馈：按创建时间倒序
-    const reviewsRes = await db.collection('reviews')
-      .where({
-        hotelId,
-        type: 'user',
-        status: 'approved'
-      })
-      .orderBy('createdAt', 'desc')
-      .limit(50)
-      .get()
-
-    // 品牌相关警示：查询所有 alert，按品牌关键词匹配酒店名
-    const alertsRes = await db.collection('reviews')
-      .where({
-        type: 'alert',
-        status: 'approved'
-      })
-      .orderBy('discoveryDate', 'desc')
-      .limit(50)
-      .get()
+    // 并行查询三种 review 类型
+    const [casesRes, reviewsRes, alertsRes] = await Promise.all([
+      db.collection('reviews')
+        .where({ hotelId, type: 'case', status: 'approved' })
+        .orderBy('discoveryDate', 'desc')
+        .limit(20)
+        .get(),
+      db.collection('reviews')
+        .where({ hotelId, type: 'user', status: 'approved' })
+        .orderBy('createdAt', 'desc')
+        .limit(50)
+        .get(),
+      db.collection('reviews')
+        .where({ type: 'alert', status: 'approved' })
+        .orderBy('discoveryDate', 'desc')
+        .limit(50)
+        .get()
+    ])
 
     const matchedAlerts = (alertsRes.data || []).filter(alert => {
       return (alert.brands || []).some(brand =>

@@ -35,13 +35,14 @@ exports.main = async () => {
     safeCount('reviews', { type: 'case', status: 'approved' }),
     db.collection('reviews')
       .where({ status: 'approved', type: 'user' })
-      .limit(200)
+      .orderBy('createdAt', 'desc')
+      .limit(30)
       .get()
       .then(res => res.data || [])
       .catch(err => { console.error('recent reviews failed:', err.message); return [] }),
     db.collection('hotels')
       .field({ name: true, city: true })
-      .limit(2000)
+      .limit(1000)
       .get()
       .then(res => res.data || [])
       .catch(err => { console.error('hotels meta failed:', err.message); return [] })
@@ -54,11 +55,7 @@ exports.main = async () => {
     if (h.city && h.city.trim()) citySet.add(h.city.trim())
   })
 
-  const sorted = (recentData || [])
-    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-    .slice(0, 20)
-
-  const recentReviews = sorted.map(r => ({
+  const recentReviews = (recentData || []).slice(0, 20).map(r => ({
     _id: r._id,
     hotelId: r.hotelId,
     hotelName: r.hotelName || hotelNameMap[r.hotelId] || '',
