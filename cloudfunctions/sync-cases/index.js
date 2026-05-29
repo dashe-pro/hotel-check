@@ -168,7 +168,6 @@ exports.main = async () => {
       // precise 模式：品牌+城市精确匹配，只关联第一家酒店
       const hotel = await fetchFirstHotel(c.brands, c.city)
       if (!hotel) {
-        console.log(`No hotel match for ${c.hotelName} ${c.city || ''} (brands: ${c.brands.join(', ')})`)
         continue
       }
 
@@ -202,7 +201,6 @@ exports.main = async () => {
       ])
 
       matchedCount++
-      console.log(`  -> ${c.hotelName} ${c.city} matched ${hotel.name}`)
     } catch (err) {
       console.error(`Case sync error for ${c.hotelName}:`, err.message)
     }

@@ -4,7 +4,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const https = require('https')
 
-const AMAP_KEY = 'a91a5e948233b056f9981f5401cf3875'
+const AMAP_KEY = process.env.AMAP_KEY || 'a91a5e948233b056f9981f5401cf3875'
 
 const CITIES = [
   '北京', '上海', '广州', '深圳', '杭州', '成都', '重庆',
@@ -73,7 +73,6 @@ function fetchHotelsFromAmap(city) {
 function fetchPage(city, page) {
   return new Promise((resolve) => {
     const url = `https://restapi.amap.com/v5/place/text?key=${AMAP_KEY}&keywords=酒店&types=100100&region=${encodeURIComponent(city)}&city_limit=true&page_size=25&page=${page}`
-    console.log(`Fetching: ${city} page ${page}`)
     https.get(url, (res) => {
       let data = ''
       res.on('data', chunk => { data += chunk })

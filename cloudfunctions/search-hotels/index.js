@@ -78,7 +78,7 @@ exports.main = async (event) => {
 }
 
 async function searchAmap(keyword, city) {
-  const AMAP_KEY = 'a91a5e948233b056f9981f5401cf3875'
+  const AMAP_KEY = process.env.AMAP_KEY || 'a91a5e948233b056f9981f5401cf3875'
   const https = require('https')
 
   return new Promise((resolve) => {

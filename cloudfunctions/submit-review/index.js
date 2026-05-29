@@ -23,6 +23,7 @@ exports.main = async (event, context) => {
     return { code: 4, msg: '内容不能超过500字' }
   }
 
+  let contentCheckPassed = true
   try {
     const checkResult = await cloud.openapi.security.msgSecCheck({
       content: content.trim(),
@@ -35,21 +36,28 @@ exports.main = async (event, context) => {
       return { code: 5, msg: '内容包含违规信息，请修改后提交' }
     }
   } catch (err) {
-    console.warn('msgSecCheck failed, fallback to manual review:', err.message)
+    console.error('msgSecCheck error:', err)
+    contentCheckPassed = false
   }
 
+  let imageCheckPassed = true
   if (images.length > 0) {
     try {
       for (const fileId of images) {
+        const downloadRes = await cloud.downloadFile({ fileID: fileId })
         const imgCheck = await cloud.openapi.security.imgSecCheck({
-          media: { contentType: 'image/jpeg', value: fileId }
+          media: {
+            contentType: 'image/jpeg',
+            value: downloadRes.fileContent
+          }
         })
         if (imgCheck.result && imgCheck.result.suggest === 'risky') {
           return { code: 6, msg: '图片包含违规内容，请更换' }
         }
       }
     } catch (err) {
-      console.warn('imgSecCheck failed:', err.message)
+      console.error('imgSecCheck error:', err)
+      imageCheckPassed = false
     }
   }
 
@@ -63,6 +71,8 @@ exports.main = async (event, context) => {
         images,
         type: 'user',
         status: 'pending',
+        contentCheckPassed,
+        imageCheckPassed,
         createdAt: new Date()
       }
     })

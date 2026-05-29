@@ -1,17 +1,29 @@
 <template>
   <view class="page">
-    <view class="user-section" @click="doLogin">
-      <image
-        v-if="userInfo.avatarUrl"
-        :src="userInfo.avatarUrl"
-        class="avatar"
-        mode="aspectFill"
-      />
-      <view v-else class="avatar-placeholder">
-        <text class="avatar-text">?</text>
-      </view>
+    <view class="user-section">
+      <button
+        class="avatar-btn"
+        open-type="chooseAvatar"
+        @chooseavatar="onChooseAvatar"
+      >
+        <image
+          v-if="userInfo.avatarUrl"
+          :src="userInfo.avatarUrl"
+          class="avatar"
+          mode="aspectFill"
+        />
+        <view v-else class="avatar-placeholder">
+          <text class="avatar-text">?</text>
+        </view>
+      </button>
       <view class="user-info">
-        <text class="user-name">{{ userInfo.nickName || '点击登录' }}</text>
+        <input
+          type="nickname"
+          class="nickname-input"
+          v-model="userInfo.nickName"
+          placeholder="点击设置昵称"
+          @blur="onNicknameBlur"
+        />
         <text class="user-hint">{{ userInfo.nickName ? '已授权' : '登录后可反馈' }}</text>
       </view>
     </view>
@@ -100,18 +112,18 @@ const myReviews = ref([])
 const reviewsLoading = ref(false)
 const favorites = ref([])
 
-function doLogin() {
-  if (userInfo.value.nickName) return
+function onChooseAvatar(e) {
+  const { avatarUrl } = e.detail
+  userInfo.value.avatarUrl = avatarUrl
+  saveUserInfo()
+}
 
-  wx.getUserProfile({
-    desc: '用于展示您的反馈身份'
-  }).then((res) => {
-    userInfo.value = res.userInfo
-    uni.setStorageSync('userInfo', res.userInfo)
-    loadMyReviews()
-  }).catch(() => {
-    uni.showToast({ title: '需要授权才能反馈', icon: 'none' })
-  })
+function onNicknameBlur() {
+  saveUserInfo()
+}
+
+function saveUserInfo() {
+  uni.setStorageSync('userInfo', userInfo.value)
 }
 
 function statusLabel(status) {
@@ -153,6 +165,7 @@ async function loadMyReviews() {
       if (hotelIds.length > 0) {
         const hotelRes = await db.collection('hotels')
           .where({ _id: db.command.in(hotelIds) })
+          .limit(100)
           .get()
         hotelRes.data.forEach(h => { hotelMap[h._id] = h.name })
       }
@@ -252,11 +265,23 @@ if (saved) {
   &:active { transform: scale(0.98); }
 }
 
+.avatar-btn {
+  width: 96rpx;
+  height: 96rpx;
+  padding: 0;
+  margin: 0;
+  margin-right: $spacing-md;
+  background: transparent;
+  border: none;
+  line-height: 1;
+
+  &::after { border: none; }
+}
+
 .avatar {
   width: 96rpx;
   height: 96rpx;
   border-radius: 50%;
-  margin-right: $spacing-md;
   box-shadow: var(--shadow-sm);
 }
 
@@ -268,7 +293,6 @@ if (saved) {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: $spacing-md;
 
   .avatar-text {
     font-size: 40rpx;
@@ -277,11 +301,14 @@ if (saved) {
   }
 }
 
-.user-name {
+.nickname-input {
   font-size: $font-lg;
   font-weight: 600;
   color: var(--text-color);
-  display: block;
+  height: 48rpx;
+  line-height: 48rpx;
+  padding: 0;
+  background: transparent;
 }
 
 .user-hint {

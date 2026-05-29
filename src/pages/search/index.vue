@@ -110,12 +110,16 @@ async function loadCities() {
     console.error('loadCities via cloud function failed:', err)
   }
 
-  // 云函数失败或返回空，尝试客户端直接查（仅取 city 字段，无 where 无排序，轻量查询）
+  // 云函数失败，客户端分页拉取城市（单次最多100条，分多页合并）
   try {
     const db = wx.cloud.database()
-    const res = await db.collection('hotels').field({ city: true }).limit(500).get()
     const citySet = new Set()
-    ;(res.data || []).forEach(h => { if (h.city && h.city.trim()) citySet.add(h.city.trim()) })
+    for (let i = 0; i < 6; i++) {
+      const res = await db.collection('hotels').field({ city: true }).skip(i * 100).limit(100).get()
+      const data = res.data || []
+      data.forEach(h => { if (h.city && h.city.trim()) citySet.add(h.city.trim()) })
+      if (data.length < 100) break
+    }
     const dbCities = Array.from(citySet).sort()
     if (dbCities.length > 0) {
       cities.value = ['全国', ...dbCities]
@@ -125,7 +129,8 @@ async function loadCities() {
     console.error('loadCities direct query failed:', e)
   }
 
-  cities.value = ['全国', '北京', '上海', '广州', '深圳', '杭州', '成都', '重庆', '武汉', '西安', '南京', '长沙', '郑州', '天津', '苏州', '厦门', '青岛', '大连', '昆明', '三亚', '丽江', '大理']
+  // 兜底：预置主要城市列表（数据库无数据时使用）
+  cities.value = ['全国', '北京', '上海', '广州', '深圳', '杭州', '成都', '重庆', '武汉', '西安', '南京', '长沙', '郑州', '天津', '苏州', '厦门', '青岛', '大连', '昆明', '三亚', '丽江', '大理', '东莞', '佛山', '合肥', '福州', '贵阳', '兰州', '南宁', '宁波', '沈阳', '石家庄', '太原', '无锡', '温州', '珠海', '中山', '惠州', '常州', '嘉兴', '绍兴', '金华', '台州', '泉州', '海口', '哈尔滨', '长春', '济南', '南昌', '拉萨', '乌鲁木齐', '呼和浩特', '银川', '西宁', '桂林', '北海', '烟台', '威海', '洛阳', '宜昌', '襄阳', '九江', '赣州', '遵义', '秦皇岛']
 }
 
 const selectedCity = ref('全国')

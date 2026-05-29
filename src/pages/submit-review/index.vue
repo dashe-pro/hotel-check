@@ -93,13 +93,11 @@ function onDateChange(e) {
 }
 
 function chooseImage() {
-  console.log('chooseImage called')
   uni.chooseImage({
     count: 3 - images.value.length,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: async (res) => {
-      console.log('chooseImage success, temp paths:', res.tempFilePaths)
       uni.showLoading({ title: '上传并检测中...' })
       for (const path of res.tempFilePaths) {
         try {
@@ -118,9 +116,7 @@ function chooseImage() {
           }
 
           images.value.push(fileID)
-          console.log('upload success, fileID:', fileID)
         } catch (err) {
-          console.error('上传失败:', err)
           uni.showToast({ title: '图片上传失败: ' + (err.errMsg || err.message || ''), icon: 'none' })
         }
       }

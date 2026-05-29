@@ -4,7 +4,7 @@
   "description": "酒店偷拍信息聚合查询",
   "scripts": {
     "dev:mp-weixin": "uni -p mp-weixin",
-    "build:mp-weixin": "uni build -p mp-weixin"
+    "build:mp-weixin": "uni build -p mp-weixin && node -e \"const{cpSync}=require('fs');cpSync('cloudfunctions','dist/build/mp-weixin/cloudfunctions',{recursive:true,force:true});console.log('cloudfunctions copied')\""
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-4020920240930001",

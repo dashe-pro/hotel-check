@@ -14,7 +14,7 @@
     },
     "usingComponents": true,
     "cloudfunctionRoot": "cloudfunctions/",
-    "__usePrivacyCheck__": false,
+    "__usePrivacyCheck__": true,
     "permission": {
       "scope.userLocation": {
         "desc": "用于在地图上展示您附近的酒店风险信息"
