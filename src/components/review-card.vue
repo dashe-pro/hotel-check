@@ -24,6 +24,7 @@
       </view>
     </view>
     <view class="review-footer">
+      <text v-if="reviewerName && type === 'user'" class="reviewer-name">{{ reviewerName }}</text>
       <text class="review-time">{{ timeAgo }}</text>
     </view>
     <view v-if="reviewId && type !== 'alert'" class="vote-bar">
@@ -52,7 +53,8 @@ const props = defineProps({
   createdAt: { type: String, default: '' },
   reviewId: { type: String, default: '' },
   upvotes: { type: Number, default: 0 },
-  downvotes: { type: Number, default: 0 }
+  downvotes: { type: Number, default: 0 },
+  reviewerName: { type: String, default: '' }
 })
 
 const emit = defineEmits(['voted'])
@@ -188,6 +190,15 @@ const timeAgo = computed(() => {
 }
 
 .review-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  .reviewer-name {
+    font-size: $font-xs;
+    color: var(--text-secondary);
+  }
+
   .review-time {
     font-size: $font-xs;
     color: var(--text-muted);

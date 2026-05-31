@@ -23,8 +23,9 @@
           v-model="userInfo.nickName"
           placeholder="点击设置昵称"
           @blur="onNicknameBlur"
+          @nicknamereview="onNicknameReview"
         />
-        <text class="user-hint">{{ userInfo.nickName ? '已授权' : '登录后可反馈' }}</text>
+        <text class="user-hint">{{ loginHint }}</text>
       </view>
     </view>
 
@@ -101,16 +102,31 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import dayjs from 'dayjs'
 import { getHistory, clearHistory } from '@/common/history.js'
 import { getFavorites, clearFavorites } from '@/common/favorites.js'
+import {
+  ensureLogin,
+  isLoggedIn,
+  syncUserInfo,
+  fetchUserInfo
+} from '@/common/cloud.js'
 
 const userInfo = ref({})
 const myReviews = ref([])
 const reviewsLoading = ref(false)
 const favorites = ref([])
+const loginReady = ref(false)
+
+// 登录状态提示
+const loginHint = computed(() => {
+  if (!loginReady.value) return '连接中…'
+  if (userInfo.value.nickName) return '已授权'
+  if (isLoggedIn()) return '点击设置昵称'
+  return '登录后可反馈'
+})
 
 function onChooseAvatar(e) {
   const { avatarUrl } = e.detail
@@ -122,8 +138,18 @@ function onNicknameBlur() {
   saveUserInfo()
 }
 
+function onNicknameReview(e) {
+  // 微信昵称自动填充事件，v-model 已自动更新 userInfo.nickName
+  if (e.detail && e.detail.pass) {
+    saveUserInfo()
+  }
+}
+
 function saveUserInfo() {
+  // 本地持久化
   uni.setStorageSync('userInfo', userInfo.value)
+  // 同步到服务端，绑定 OpenID
+  syncUserInfo(userInfo.value)
 }
 
 function statusLabel(status) {
@@ -183,7 +209,7 @@ async function loadMyReviews() {
   }
 }
 
-// restore login state on launch
+// ========== 本地数据 ==========
 const historyList = ref([])
 
 function loadHistory() {
@@ -224,6 +250,30 @@ function formatViewTime(ts) {
   return dayjs(ts).format('MM-DD HH:mm')
 }
 
+// ========== 初始化 ==========
+async function initLogin() {
+  loginReady.value = false
+  await ensureLogin()
+  loginReady.value = true
+
+  // 优先从本地恢复
+  const saved = uni.getStorageSync('userInfo')
+  if (saved && (saved.nickName || saved.avatarUrl)) {
+    userInfo.value = saved
+    // 后台同步到云端（补充本地可能缺少的字段）
+    syncUserInfo(saved)
+  } else if (isLoggedIn()) {
+    // 本地没有，尝试从云端恢复（换设备场景）
+    const remote = await fetchUserInfo()
+    if (remote && (remote.nickName || remote.avatarUrl)) {
+      userInfo.value = remote
+      uni.setStorageSync('userInfo', remote)
+    }
+  }
+
+  // 反馈数据由 onShow 统一加载，此处仅恢复登录态
+}
+
 onShow(() => {
   loadHistory()
   loadFavorites()
@@ -237,14 +287,7 @@ onPullDownRefresh(async () => {
   uni.stopPullDownRefresh()
 })
 
-loadHistory()
-loadFavorites()
-
-const saved = uni.getStorageSync('userInfo')
-if (saved) {
-  userInfo.value = saved
-  loadMyReviews()
-}
+initLogin()
 </script>
 
 <style lang="scss" scoped>

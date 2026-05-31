@@ -76,6 +76,7 @@
           :createdAt="item.createdAt"
           :upvotes="item.upvotes || 0"
           :downvotes="item.downvotes || 0"
+          :reviewerName="item.reviewerName || ''"
         />
       </view>
 

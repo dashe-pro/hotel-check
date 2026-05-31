@@ -7,10 +7,7 @@ exports.main = async (event, context) => {
   const { hotelId, hotelName, content, discoveryDate, images = [] } = event
   const { OPENID } = cloud.getWXContext()
 
-  if (!OPENID) {
-    return { code: 1, msg: '请先登录' }
-  }
-
+  // 参数校验
   if (!hotelId || !content || !content.trim()) {
     return { code: 2, msg: '参数不完整' }
   }
@@ -23,13 +20,15 @@ exports.main = async (event, context) => {
     return { code: 4, msg: '内容不能超过500字' }
   }
 
+  // ========== 内容安全检测 ==========
+
   let contentCheckPassed = true
   try {
     const checkResult = await cloud.openapi.security.msgSecCheck({
       content: content.trim(),
       version: 2,
       scene: 2,
-      openid: OPENID
+      openid: OPENID || ''
     })
 
     if (checkResult.result && checkResult.result.suggest === 'risky') {
@@ -61,6 +60,30 @@ exports.main = async (event, context) => {
     }
   }
 
+  // ========== 获取用户昵称（登录用户） ==========
+
+  let reviewerName = '匿名用户'
+  let reviewerAvatar = ''
+
+  if (OPENID) {
+    try {
+      const userRes = await db.collection('users')
+        .where({ _openid: OPENID })
+        .limit(1)
+        .get()
+
+      if (userRes.data.length > 0) {
+        reviewerName = userRes.data[0].nickName || '匿名用户'
+        reviewerAvatar = userRes.data[0].avatarUrl || ''
+      }
+    } catch (err) {
+      console.error('获取用户信息失败:', err)
+      // 不影响主流程，使用默认匿名
+    }
+  }
+
+  // ========== 写入数据库 ==========
+
   try {
     const res = await db.collection('reviews').add({
       data: {
@@ -71,6 +94,8 @@ exports.main = async (event, context) => {
         images,
         type: 'user',
         status: 'pending',
+        reviewerName,
+        reviewerAvatar,
         contentCheckPassed,
         imageCheckPassed,
         createdAt: new Date()
