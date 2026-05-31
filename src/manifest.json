@@ -15,6 +15,7 @@
     "usingComponents": true,
     "cloudfunctionRoot": "cloudfunctions/",
     "__usePrivacyCheck__": true,
+    "requiredPrivateInfos": ["chooseAvatar", "getLocation"],
     "permission": {
       "scope.userLocation": {
         "desc": "用于在地图上展示您附近的酒店风险信息"
