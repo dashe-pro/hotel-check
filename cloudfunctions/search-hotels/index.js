@@ -3,74 +3,84 @@ const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
+const PAGE_SIZE = 20
+
 exports.main = async (event) => {
-  const { keyword, city } = event
+  const { keyword, city, skip = 0 } = event
   if (!keyword || !keyword.trim()) {
     return { code: 1, msg: '关键词不能为空' }
   }
 
   try {
     const kw = keyword.trim()
+    console.log('search-hotels keyword:', kw, 'city:', city || '无', 'skip:', skip)
 
+    // 构造模糊匹配条件
     const conditions = [
       { name: db.RegExp({ regexp: kw, options: 'i' }) },
       { address: db.RegExp({ regexp: kw, options: 'i' }) }
     ]
     const where = db.command.or(conditions)
 
-    let localQuery = db.collection('hotels').where(where)
+    let query = db.collection('hotels').where(where)
     if (city) {
-      localQuery = db.collection('hotels').where(
-        db.command.and([
-          where,
-          { city: db.RegExp({ regexp: city, options: 'i' }) }
-        ])
+      query = db.collection('hotels').where(
+        db.command.and([where, { city: db.RegExp({ regexp: city, options: 'i' }) }])
       )
     }
 
-    const localResult = await localQuery.limit(20).get()
+    // 多取一条用于判断是否还有下一页
+    const result = await query.skip(skip).limit(PAGE_SIZE + 1).get()
+    const data = result.data || []
+    const hasMore = data.length > PAGE_SIZE
 
-    if (!localResult.data || localResult.data.length === 0) {
+    console.log('search-hotels results:', Math.min(data.length, PAGE_SIZE), 'hasMore:', hasMore)
+
+    // 第一页本地无结果 → 高德兜底
+    if (skip === 0 && data.length === 0) {
+      console.log('search-hotels: 本地无结果，尝试高德搜索')
       const amapHotels = await searchAmap(kw, city)
-      if (amapHotels.length > 0) {
-        const inserts = amapHotels.map(h => ({
-          name: h.name,
-          city: h.city,
-          address: h.address || '',
-          rating: h.rating,
-          photos: h.photos,
-          tel: h.tel,
-          hasCase: false,
-          caseCount: 0,
-          reviewCount: 0,
-          createdAt: new Date()
-        }))
+      console.log('search-hotels: 高德返回', amapHotels.length, '条')
 
-        for (const h of inserts) {
+      if (amapHotels.length > 0) {
+        // 写入新酒店（name+city 去重）
+        const seenKeys = new Set()
+        for (const h of amapHotels) {
+          const key = `${h.name}||${h.city}`
+          if (seenKeys.has(key)) continue
+          seenKeys.add(key)
+
           const exists = await db.collection('hotels')
             .where({ name: h.name, city: h.city })
             .count()
           if (exists.total === 0) {
-            await db.collection('hotels').add({ data: h })
+            await db.collection('hotels').add({
+              data: {
+                name: h.name, city: h.city, address: h.address || '',
+                rating: h.rating, photos: h.photos, tel: h.tel,
+                hasCase: false, caseCount: 0, reviewCount: 0,
+                createdAt: new Date()
+              }
+            })
           }
         }
 
-        let freshQuery = db.collection('hotels').where(where)
-        if (city) {
-          freshQuery = db.collection('hotels').where(
-            db.command.and([
-              where,
-              { city: db.RegExp({ regexp: city, options: 'i' }) }
-            ])
-          )
+        // 重新查询
+        const freshResult = await query.limit(PAGE_SIZE + 1).get()
+        const freshData = freshResult.data || []
+        return {
+          code: 0,
+          data: freshData.slice(0, PAGE_SIZE),
+          hasMore: freshData.length > PAGE_SIZE
         }
-        const freshResult = await freshQuery.limit(20).get()
-
-        return { code: 0, data: freshResult.data }
       }
     }
 
-    return { code: 0, data: localResult.data || [] }
+    return {
+      code: 0,
+      data: data.slice(0, PAGE_SIZE),
+      hasMore
+    }
   } catch (err) {
     console.error('search-hotels error:', err)
     return { code: 500, msg: '搜索失败，请重试' }

@@ -21,6 +21,7 @@ const CITIES = [
 ]
 
 const PAGES = 8
+const BATCH_SIZE = 100 // db.command.in 上限
 
 exports.main = async () => {
   let totalAdded = 0
@@ -30,32 +31,50 @@ exports.main = async () => {
       const hotels = await fetchHotelsFromAmap(city)
       if (hotels.length === 0) continue
 
-      const names = hotels.map(h => h.name)
-      const existing = await db.collection('hotels')
-        .where({ name: db.command.in(names) })
-        .field({ name: true })
-        .get()
-      const existingNames = new Set(existing.data.map(h => h.name))
+      // 1. 同一批次内按 name+city 去重
+      const seen = new Set()
+      const uniqueHotels = hotels.filter(h => {
+        const key = `${h.name}||${h.city}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
 
-      for (const h of hotels) {
-        if (!existingNames.has(h.name)) {
-          await db.collection('hotels').add({
-            data: {
-              name: h.name,
-              city: h.city,
-              address: h.address,
-              rating: h.rating,
-              photos: h.photos,
-              tel: h.tel,
-              location: h.location,
-              hasCase: false,
-              caseCount: 0,
-              reviewCount: 0,
-              createdAt: new Date()
-            }
-          })
-          totalAdded++
-        }
+      // 2. 分批查询已存在的酒店（db.command.in 上限 100）
+      const existingKeys = new Set()
+      for (let i = 0; i < uniqueHotels.length; i += BATCH_SIZE) {
+        const batch = uniqueHotels.slice(i, i + BATCH_SIZE)
+        const batchNames = batch.map(h => h.name)
+        const existing = await db.collection('hotels')
+          .where({ name: db.command.in(batchNames) })
+          .field({ name: true, city: true })
+          .limit(BATCH_SIZE)
+          .get()
+        ;(existing.data || []).forEach(h => existingKeys.add(`${h.name}||${h.city}`))
+      }
+
+      // 3. 插入不存在的酒店，同时更新 existingKeys 防止同批重复
+      for (const h of uniqueHotels) {
+        const key = `${h.name}||${h.city}`
+        if (existingKeys.has(key)) continue
+
+        await db.collection('hotels').add({
+          data: {
+            name: h.name,
+            city: h.city,
+            address: h.address,
+            rating: h.rating,
+            photos: h.photos,
+            tel: h.tel,
+            location: h.location,
+            hasCase: false,
+            caseCount: 0,
+            reviewCount: 0,
+            createdAt: new Date()
+          }
+        })
+        existingKeys.add(key)
+        totalAdded++
       }
     } catch (err) {
       console.error(`Sync ${city} failed:`, err.message)

@@ -21,31 +21,19 @@
           :placeholder="selectedCity === '全国' ? '输入酒店名称' : `在${selectedCity}搜索酒店`"
           confirm-type="search"
           @confirm="doSearch"
-          @focus="onFocus"
-          @blur="onBlur"
         />
       </view>
       <text class="search-btn" @click="doSearch">搜索</text>
     </view>
 
-    <view v-if="showSuggestions" class="suggestions-panel">
-      <view v-if="hotWords.length && !keyword" class="suggest-section">
-        <text class="suggest-label">热门搜索</text>
-        <view class="hot-tags">
-          <text v-for="w in hotWords" :key="w" class="hot-tag" @click="quickSearch(w)">{{ w }}</text>
-        </view>
-      </view>
-      <view v-if="suggestions.length" class="suggest-section">
-        <view
-          v-for="s in suggestions"
-          :key="s.name"
-          class="suggest-item"
-          @click="quickSearch(s.name)"
-        >
-          <text class="suggest-name">{{ s.name }}</text>
-          <text class="suggest-city">{{ s.city }}</text>
-        </view>
-      </view>
+    <view v-if="!searched" class="hot-section">
+      <text class="hot-label">热门搜索：</text>
+      <text
+        v-for="w in hotWords"
+        :key="w"
+        class="hot-tag"
+        @click="quickSearch(w)"
+      >{{ w }}</text>
     </view>
 
     <view v-if="loading">
@@ -80,6 +68,8 @@
         </view>
         <text class="arrow">›</text>
       </view>
+      <view v-if="loadingMore" class="loading-more">加载中...</view>
+      <view v-else-if="!hasMore && results.length > 0" class="loading-more">— 已显示全部结果 —</view>
     </view>
 
     <view v-else-if="searched && !loading" class="empty-result">
@@ -95,7 +85,8 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
+import { onReachBottom } from '@dcloudio/uni-app'
 
 const cities = ref(['全国'])
 
@@ -139,12 +130,12 @@ const results = ref([])
 const loading = ref(false)
 const searched = ref(false)
 
-const showSuggestions = ref(false)
-const suggestions = ref([])
-const hotWords = ref([])
-let debounceTimer = null
+const hotWords = ['如家', '汉庭', '全季', '7天', '希尔顿', '万豪', '亚朵', '锦江之星']
 
 const selectedForCompare = ref([])
+const skip = ref(0)
+const hasMore = ref(false)
+const loadingMore = ref(false)
 
 function isSelected(id) {
   return selectedForCompare.value.some(h => h._id === id)
@@ -168,23 +159,26 @@ function startCompare() {
 
 function selectCity(city) {
   selectedCity.value = city
-  if (keyword.value.trim()) {
-    doSearch()
-  }
+}
+
+function quickSearch(name) {
+  keyword.value = name
+  selectedForCompare.value = []
+  doSearch()
 }
 
 async function doSearch() {
-  const kw = keyword.value.trim()
-  if (!kw) return
-
-  loading.value = true
-  searched.value = true
-  results.value = []
-  showSuggestions.value = false
-  selectedForCompare.value = []
-
   try {
-    const data = { keyword: kw }
+    const kw = keyword.value.trim()
+    if (!kw) return
+
+    loading.value = true
+    searched.value = true
+    results.value = []
+    selectedForCompare.value = []
+    skip.value = 0
+
+    const data = { keyword: kw, skip: 0 }
     if (selectedCity.value !== '全国') {
       data.city = selectedCity.value
     }
@@ -194,7 +188,10 @@ async function doSearch() {
     })
 
     if (res.result && res.result.code === 0) {
-      results.value = res.result.data
+      results.value = res.result.data || []
+      hasMore.value = res.result.hasMore || false
+    } else {
+      uni.showToast({ title: res.result?.msg || '未找到相关酒店', icon: 'none' })
     }
   } catch (err) {
     console.error('搜索失败:', err)
@@ -204,58 +201,43 @@ async function doSearch() {
   }
 }
 
+async function loadMore() {
+  if (!hasMore.value || loadingMore.value) return
+  loadingMore.value = true
+
+  try {
+    const nextSkip = skip.value + 20
+    const data = { keyword: keyword.value.trim(), skip: nextSkip }
+    if (selectedCity.value !== '全国') {
+      data.city = selectedCity.value
+    }
+    const res = await wx.cloud.callFunction({
+      name: 'search-hotels',
+      data
+    })
+
+    if (res.result && res.result.code === 0) {
+      results.value.push(...(res.result.data || []))
+      hasMore.value = res.result.hasMore || false
+      skip.value = nextSkip
+    }
+  } catch (err) {
+    console.error('加载更多失败:', err)
+  } finally {
+    loadingMore.value = false
+  }
+}
+
 function goDetail(hotelId) {
   uni.navigateTo({ url: `/pages/hotel-detail/index?id=${hotelId}` })
 }
 
-// Search suggestions
-function onFocus() {
-  if (hotWords.value.length || !keyword.value) {
-    showSuggestions.value = true
-  }
-}
-
-function onBlur() {
-  setTimeout(() => { showSuggestions.value = false }, 200)
-}
-
-watch(keyword, (val) => {
-  clearTimeout(debounceTimer)
-  if (!val || !val.trim()) {
-    showSuggestions.value = !!hotWords.value.length
-    suggestions.value = []
-    return
-  }
-  debounceTimer = setTimeout(async () => {
-    try {
-      const data = { keyword: val.trim() }
-      if (selectedCity.value !== '全国') data.city = selectedCity.value
-      const res = await wx.cloud.callFunction({
-        name: 'search-suggest',
-        data
-      })
-      if (res.result?.code === 0) {
-        suggestions.value = res.result.data.suggestions || []
-        hotWords.value = res.result.data.hotWords || []
-        showSuggestions.value = !!(suggestions.value.length || hotWords.value.length)
-      }
-    } catch { /* silent */ }
-  }, 300)
+onReachBottom(() => {
+  loadMore()
 })
 
-function quickSearch(name) {
-  keyword.value = name
-  showSuggestions.value = false
-  selectedForCompare.value = []
-  doSearch()
-}
-
-onMounted(async () => {
+onMounted(() => {
   loadCities()
-  try {
-    const res = await wx.cloud.callFunction({ name: 'search-suggest', data: { keyword: '' } })
-    if (res.result?.code === 0) hotWords.value = res.result.data.hotWords || []
-  } catch {}
 })
 </script>
 
@@ -331,6 +313,30 @@ onMounted(async () => {
   font-size: $font-md;
   color: var(--primary-color);
   font-weight: 500;
+}
+
+.hot-section {
+  padding: $spacing-md;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.hot-label {
+  font-size: $font-sm;
+  color: var(--text-muted);
+}
+
+.hot-tag {
+  font-size: $font-sm;
+  color: var(--primary-color);
+  background: var(--primary-light);
+  padding: 6rpx 24rpx;
+  border-radius: $radius-round;
+  transition: transform var(--transition);
+
+  &:active { transform: scale(0.95); }
 }
 
 .suggestions-panel {
@@ -525,6 +531,13 @@ onMounted(async () => {
   font-weight: 500;
   padding: 12rpx 40rpx;
   border-radius: $radius-round;
+}
+
+.loading-more {
+  text-align: center;
+  padding: 30rpx 0;
+  font-size: $font-sm;
+  color: var(--text-muted);
 }
 
 .empty-result {
