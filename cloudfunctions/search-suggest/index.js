@@ -24,6 +24,7 @@ exports.main = async (event) => {
       .get()
     return { code: 0, data: { suggestions: (res.data || []).map(h => ({ name: h.name, city: h.city })), hotWords: [] } }
   } catch (err) {
-    return { code: 500, msg: '查询失败' }
+    console.error('search-suggest error:', err)
+    return { code: 500, msg: '查询失败，请重试' }
   }
 }

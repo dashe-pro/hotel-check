@@ -1,6 +1,5 @@
 <script setup>
 import { onLaunch } from '@dcloudio/uni-app'
-import { ensureLogin } from '@/common/cloud.js'
 
 onLaunch(() => {
   // 云开发初始化
@@ -10,9 +9,6 @@ onLaunch(() => {
       traceUser: true
     })
   }
-
-  // 预登录：提前获取 OpenID，让后续云函数调用都能拿到用户身份
-  ensureLogin()
 
   // 隐私授权处理
   // 当用户未同意隐私协议却调用了隐私 API 时，微信会触发此事件

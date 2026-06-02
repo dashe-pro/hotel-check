@@ -55,6 +55,7 @@ exports.main = async (event, context) => {
 
     return { code: 0, msg: '投票成功' }
   } catch (err) {
-    return { code: 500, msg: '操作失败', error: err.message }
+    console.error('vote-review error:', err)
+    return { code: 500, msg: '操作失败，请重试' }
   }
 }

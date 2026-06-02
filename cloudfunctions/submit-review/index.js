@@ -105,6 +105,6 @@ exports.main = async (event, context) => {
     return { code: 0, msg: '提交成功', data: { reviewId: res._id } }
   } catch (err) {
     console.error('submit-review write error:', err)
-    return { code: 500, msg: '提交失败', error: err.message }
+    return { code: 500, msg: '提交失败，请重试' }
   }
 }

@@ -34,6 +34,6 @@ exports.main = async (event) => {
     return { code: 0, msg: '通知已发送' }
   } catch (err) {
     console.error('notify-review-approved error:', err)
-    return { code: 500, msg: '通知发送失败', error: err.message }
+    return { code: 500, msg: '通知发送失败，请重试' }
   }
 }

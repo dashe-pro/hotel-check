@@ -1,30 +1,15 @@
 <template>
   <view class="page">
     <view class="user-section">
-      <button
-        class="avatar-btn"
-        open-type="chooseAvatar"
-        @chooseavatar="onChooseAvatar"
-      >
-        <image
-          v-if="userInfo.avatarUrl"
-          :src="userInfo.avatarUrl"
-          class="avatar"
-          mode="aspectFill"
-        />
+      <button class="avatar-btn" open-type="chooseAvatar" @chooseavatar="onChooseAvatar" :disabled="avatarUploading">
+        <image v-if="userInfo.avatarUrl" :src="userInfo.avatarUrl" class="avatar" mode="aspectFill" />
         <view v-else class="avatar-placeholder">
-          <text class="avatar-text">?</text>
+          <text class="avatar-text">{{ avatarUploading ? '...' : '?' }}</text>
         </view>
       </button>
       <view class="user-info">
-        <input
-          type="nickname"
-          class="nickname-input"
-          v-model="userInfo.nickName"
-          placeholder="点击设置昵称"
-          @blur="onNicknameBlur"
-          @nicknamereview="onNicknameReview"
-        />
+        <input type="nickname" class="nickname-input" v-model="userInfo.nickName" placeholder="点击设置昵称"
+          @blur="onNicknameBlur" @nicknamereview="onNicknameReview" />
         <text class="user-hint">{{ loginHint }}</text>
       </view>
     </view>
@@ -34,12 +19,7 @@
         <text class="section-title">浏览历史</text>
         <text class="clear-btn" @click="doClearHistory">清空</text>
       </view>
-      <view
-        v-for="item in historyList"
-        :key="item._id"
-        class="history-item"
-        @click="goDetail(item._id)"
-      >
+      <view v-for="item in historyList" :key="item._id" class="history-item" @click="goDetail(item._id)">
         <text class="history-name">{{ item.name }}</text>
         <text class="history-address">{{ item.address || item.city || '' }}</text>
         <text class="history-time">{{ formatViewTime(item.viewedAt) }}</text>
@@ -107,31 +87,44 @@ import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import dayjs from 'dayjs'
 import { getHistory, clearHistory } from '@/common/history.js'
 import { getFavorites, clearFavorites } from '@/common/favorites.js'
-import {
-  ensureLogin,
-  isLoggedIn,
-  syncUserInfo,
-  fetchUserInfo
-} from '@/common/cloud.js'
+import { syncUserInfo, fetchUserInfo } from '@/common/cloud.js'
 
 const userInfo = ref({})
 const myReviews = ref([])
 const reviewsLoading = ref(false)
 const favorites = ref([])
-const loginReady = ref(false)
 
-// 登录状态提示
+// 身份提示
 const loginHint = computed(() => {
-  if (!loginReady.value) return '连接中…'
-  if (userInfo.value.nickName) return '已授权'
-  if (isLoggedIn()) return '点击设置昵称'
-  return '登录后可反馈'
+  if (userInfo.value.nickName) return '已设置昵称'
+  return '点击设置昵称，展示身份'
 })
 
-function onChooseAvatar(e) {
+const avatarUploading = ref(false)
+
+async function onChooseAvatar(e) {
   const { avatarUrl } = e.detail
-  userInfo.value.avatarUrl = avatarUrl
-  saveUserInfo()
+  if (!avatarUrl) return
+
+  avatarUploading.value = true
+  uni.showLoading({ title: '上传头像...', mask: true })
+
+  try {
+    // 上传到云存储，获取永久 cloud:// fileID
+    const cloudPath = `avatars/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`
+    const uploadRes = await wx.cloud.uploadFile({ cloudPath, filePath: avatarUrl })
+
+    userInfo.value.avatarUrl = uploadRes.fileID
+    saveUserInfo()
+    uni.hideLoading()
+    uni.showToast({ title: '头像设置成功', icon: 'success' })
+  } catch (err) {
+    console.error('头像上传失败:', err)
+    uni.hideLoading()
+    uni.showToast({ title: '上传失败，请重试', icon: 'none' })
+  } finally {
+    avatarUploading.value = false
+  }
 }
 
 function onNicknameBlur() {
@@ -139,16 +132,13 @@ function onNicknameBlur() {
 }
 
 function onNicknameReview(e) {
-  // 微信昵称自动填充事件，v-model 已自动更新 userInfo.nickName
   if (e.detail && e.detail.pass) {
     saveUserInfo()
   }
 }
 
 function saveUserInfo() {
-  // 本地持久化
-  uni.setStorageSync('userInfo', userInfo.value)
-  // 同步到服务端，绑定 OpenID
+  uni.setStorageSync('userInfo', JSON.parse(JSON.stringify(userInfo.value)))
   syncUserInfo(userInfo.value)
 }
 
@@ -251,18 +241,13 @@ function formatViewTime(ts) {
 }
 
 // ========== 初始化 ==========
-async function initLogin() {
-  loginReady.value = false
-  await ensureLogin()
-  loginReady.value = true
-
+async function initUserInfo() {
   // 优先从本地恢复
   const saved = uni.getStorageSync('userInfo')
   if (saved && (saved.nickName || saved.avatarUrl)) {
     userInfo.value = saved
-    // 后台同步到云端（补充本地可能缺少的字段）
     syncUserInfo(saved)
-  } else if (isLoggedIn()) {
+  } else {
     // 本地没有，尝试从云端恢复（换设备场景）
     const remote = await fetchUserInfo()
     if (remote && (remote.nickName || remote.avatarUrl)) {
@@ -270,8 +255,6 @@ async function initLogin() {
       uni.setStorageSync('userInfo', remote)
     }
   }
-
-  // 反馈数据由 onShow 统一加载，此处仅恢复登录态
 }
 
 onShow(() => {
@@ -287,7 +270,7 @@ onPullDownRefresh(async () => {
   uni.stopPullDownRefresh()
 })
 
-initLogin()
+initUserInfo()
 </script>
 
 <style lang="scss" scoped>
@@ -305,7 +288,9 @@ initLogin()
   box-shadow: var(--shadow-sm);
   transition: transform var(--transition);
 
-  &:active { transform: scale(0.98); }
+  &:active {
+    transform: scale(0.98);
+  }
 }
 
 .avatar-btn {
@@ -318,7 +303,9 @@ initLogin()
   border: none;
   line-height: 1;
 
-  &::after { border: none; }
+  &::after {
+    border: none;
+  }
 }
 
 .avatar {
@@ -384,7 +371,9 @@ initLogin()
   box-shadow: var(--shadow-sm);
   transition: transform var(--transition);
 
-  &:active { transform: scale(0.98); }
+  &:active {
+    transform: scale(0.98);
+  }
 
   .history-name {
     font-size: $font-sm;
@@ -429,9 +418,17 @@ initLogin()
   margin-right: 6rpx;
 }
 
-.legend-pending { background: var(--warning-color); }
-.legend-approved { background: var(--safe-color); }
-.legend-rejected { background: var(--danger-color); }
+.legend-pending {
+  background: var(--warning-color);
+}
+
+.legend-approved {
+  background: var(--safe-color);
+}
+
+.legend-rejected {
+  background: var(--danger-color);
+}
 
 .legend-text {
   font-size: $font-xs;
@@ -451,7 +448,9 @@ initLogin()
   box-shadow: var(--shadow-sm);
   transition: transform var(--transition);
 
-  &:active { transform: scale(0.98); }
+  &:active {
+    transform: scale(0.98);
+  }
 
   .fav-name {
     font-size: $font-sm;
@@ -487,7 +486,9 @@ initLogin()
   box-shadow: var(--shadow-sm);
   transition: transform var(--transition);
 
-  &:active { transform: scale(0.98); }
+  &:active {
+    transform: scale(0.98);
+  }
 
   .item-header {
     display: flex;
@@ -502,9 +503,23 @@ initLogin()
     color: var(--text-color);
   }
 
-  .s-pending { font-size: $font-xs; color: var(--warning-color); font-weight: 500; }
-  .s-approved { font-size: $font-xs; color: var(--safe-color); font-weight: 500; }
-  .s-rejected { font-size: $font-xs; color: var(--danger-color); font-weight: 500; }
+  .s-pending {
+    font-size: $font-xs;
+    color: var(--warning-color);
+    font-weight: 500;
+  }
+
+  .s-approved {
+    font-size: $font-xs;
+    color: var(--safe-color);
+    font-weight: 500;
+  }
+
+  .s-rejected {
+    font-size: $font-xs;
+    color: var(--danger-color);
+    font-weight: 500;
+  }
 
   .item-content {
     font-size: $font-sm;

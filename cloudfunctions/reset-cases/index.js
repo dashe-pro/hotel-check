@@ -13,16 +13,21 @@ exports.main = async () => {
     return { code: 403, msg: '无权限' }
   }
 
-  const caseRes = await db.collection('reviews').where({ type: 'case' }).remove()
-  const alertRes = await db.collection('reviews').where({ type: 'alert' }).remove()
-  const hotelRes = await db.collection('hotels')
-    .where({ hasCase: true })
-    .update({
-      data: { hasCase: false, caseCount: 0 }
-    })
+  try {
+    const caseRes = await db.collection('reviews').where({ type: 'case' }).remove()
+    const alertRes = await db.collection('reviews').where({ type: 'alert' }).remove()
+    const hotelRes = await db.collection('hotels')
+      .where({ hasCase: true })
+      .update({
+        data: { hasCase: false, caseCount: 0 }
+      })
 
-  return {
-    code: 0,
-    msg: `重置完成 — 删除案件 ${caseRes.stats?.removed || 0} 条，删除警示 ${alertRes.stats?.removed || 0} 条，重置酒店 ${hotelRes.stats?.updated || 0} 家`
+    return {
+      code: 0,
+      msg: `重置完成 — 删除案件 ${caseRes.stats?.removed || 0} 条，删除警示 ${alertRes.stats?.removed || 0} 条，重置酒店 ${hotelRes.stats?.updated || 0} 家`
+    }
+  } catch (err) {
+    console.error('reset-cases error:', err)
+    return { code: 500, msg: '重置失败，请重试' }
   }
 }

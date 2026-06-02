@@ -73,12 +73,16 @@ exports.main = async (event) => {
     return { code: 0, data: localResult.data || [] }
   } catch (err) {
     console.error('search-hotels error:', err)
-    return { code: 500, msg: '搜索失败', error: err.message }
+    return { code: 500, msg: '搜索失败，请重试' }
   }
 }
 
 async function searchAmap(keyword, city) {
-  const AMAP_KEY = process.env.AMAP_KEY || 'a91a5e948233b056f9981f5401cf3875'
+  const AMAP_KEY = process.env.AMAP_KEY
+  if (!AMAP_KEY) {
+    console.error('search-hotels: AMAP_KEY environment variable is not set')
+    return []
+  }
   const https = require('https')
 
   return new Promise((resolve) => {

@@ -31,6 +31,6 @@ exports.main = async (event) => {
     return { code: 0, msg: 'ok' }
   } catch (err) {
     console.error('check-image error:', err)
-    return { code: 500, msg: '图片检测失败: ' + (err.errMsg || err.message || '') }
+    return { code: 500, msg: '图片检测失败，请重试' }
   }
 }

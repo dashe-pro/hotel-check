@@ -8,7 +8,7 @@
   "mp-weixin": {
     "appid": "wxed77960951c9c3f2",
     "setting": {
-      "urlCheck": false,
+      "urlCheck": true,
       "es6": true,
       "minified": true
     },

@@ -4,7 +4,10 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const https = require('https')
 
-const AMAP_KEY = process.env.AMAP_KEY || 'a91a5e948233b056f9981f5401cf3875'
+const AMAP_KEY = process.env.AMAP_KEY
+if (!AMAP_KEY) {
+  throw new Error('sync-hotels: AMAP_KEY environment variable is not set')
+}
 
 const CITIES = [
   '北京', '上海', '广州', '深圳', '杭州', '成都', '重庆',

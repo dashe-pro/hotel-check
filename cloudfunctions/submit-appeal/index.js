@@ -27,6 +27,7 @@ exports.main = async (event) => {
     })
     return { code: 0, msg: '申诉已提交，我们会尽快核实处理' }
   } catch (err) {
-    return { code: 500, msg: '提交失败', error: err.message }
+    console.error('submit-appeal error:', err)
+    return { code: 500, msg: '提交失败，请重试' }
   }
 }

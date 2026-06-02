@@ -61,6 +61,6 @@ exports.main = async (event) => {
     }
   } catch (err) {
     console.error('get-hotel-detail error:', err)
-    return { code: 500, msg: '获取详情失败', error: err.message }
+    return { code: 500, msg: '获取详情失败，请重试' }
   }
 }

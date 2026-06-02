@@ -12,6 +12,7 @@ exports.main = async (event, context) => {
     })
     return { code: 0 }
   } catch (err) {
-    return { code: 500, msg: err.message }
+    console.error('mark-review-subscribed error:', err)
+    return { code: 500, msg: '操作失败，请重试' }
   }
 }
