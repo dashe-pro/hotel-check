@@ -1,16 +1,26 @@
 <template>
   <view class="page">
     <view class="city-bar">
-      <view class="city-grid">
+      <scroll-view scroll-x class="province-row" :show-scrollbar="false">
         <view
-          v-for="c in cities"
+          v-for="p in provinces"
+          :key="p"
+          :class="['province-chip', selectedProvince === p ? 'province-chip-active' : '']"
+          @click="selectProvince(p)"
+        >
+          <text>{{ p }}</text>
+        </view>
+      </scroll-view>
+      <scroll-view scroll-x class="city-scroll" :show-scrollbar="false" v-if="currentCities.length > 1">
+        <view
+          v-for="c in currentCities"
           :key="c"
           :class="['city-chip', selectedCity === c ? 'city-chip-active' : '']"
           @click="selectCity(c)"
         >
           <text>{{ c }}</text>
         </view>
-      </view>
+      </scroll-view>
     </view>
 
     <view class="search-bar">
@@ -18,7 +28,7 @@
         <input
           class="search-input"
           v-model="keyword"
-          :placeholder="selectedCity === '全国' ? '输入酒店名称' : `在${selectedCity}搜索酒店`"
+          :placeholder="selectedCity && selectedCity !== '全省' ? `在${selectedCity}搜索酒店` : selectedProvince === '全国' ? '输入酒店名称' : `在${selectedProvince}搜索酒店`"
           confirm-type="search"
           @confirm="doSearch"
         />
@@ -85,46 +95,84 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { onReachBottom } from '@dcloudio/uni-app'
 
-const cities = ref(['全国'])
+// 省份 → 城市映射
+const PROVINCE_MAP = {
+  '全国': [],
+  '北京': ['北京'],
+  '上海': ['上海'],
+  '天津': ['天津'],
+  '重庆': ['重庆'],
+  '广东': ['广州', '深圳', '东莞', '佛山', '珠海', '中山', '惠州', '汕头', '湛江', '江门', '肇庆', '茂名', '梅州', '清远', '揭阳'],
+  '浙江': ['杭州', '宁波', '温州', '嘉兴', '绍兴', '金华', '台州'],
+  '江苏': ['南京', '苏州', '无锡', '常州', '南通', '徐州', '盐城', '泰州', '镇江', '淮安', '扬州'],
+  '山东': ['济南', '青岛', '烟台', '威海', '临沂', '淄博', '潍坊', '济宁', '泰安'],
+  '福建': ['厦门', '福州', '泉州', '漳州', '莆田'],
+  '四川': ['成都', '绵阳', '宜宾', '南充', '泸州'],
+  '湖北': ['武汉', '襄阳', '宜昌', '荆州', '黄冈'],
+  '湖南': ['长沙', '岳阳', '衡阳', '株洲', '常德'],
+  '河南': ['郑州', '洛阳', '南阳', '许昌', '周口', '新乡'],
+  '河北': ['石家庄', '唐山', '保定', '邯郸', '廊坊', '沧州', '秦皇岛'],
+  '陕西': ['西安', '咸阳', '宝鸡', '榆林'],
+  '辽宁': ['沈阳', '大连'],
+  '吉林': ['长春'],
+  '黑龙江': ['哈尔滨'],
+  '安徽': ['合肥'],
+  '江西': ['南昌', '九江', '赣州', '上饶', '宜春'],
+  '贵州': ['贵阳', '遵义', '毕节', '六盘水'],
+  '云南': ['昆明', '丽江', '大理', '西双版纳'],
+  '广西': ['南宁', '桂林', '柳州', '玉林', '北海'],
+  '海南': ['海口', '三亚'],
+  '甘肃': ['兰州'],
+  '青海': ['西宁'],
+  '宁夏': ['银川'],
+  '新疆': ['乌鲁木齐'],
+  '内蒙古': ['呼和浩特'],
+  '西藏': ['拉萨'],
+  '山西': ['太原'],
+}
+
+// 所有城市汇总
+const ALL_CITIES = Object.values(PROVINCE_MAP).flat().filter(Boolean)
+
+const provinces = Object.keys(PROVINCE_MAP)
+const selectedProvince = ref('全国')
+const selectedCity = ref('')
+const currentCities = computed(() => {
+  const list = PROVINCE_MAP[selectedProvince.value]
+  if (!list || list.length === 0) return ALL_CITIES
+  return ['全省', ...list]
+})
 
 async function loadCities() {
+  // 尝试从 DB 补充未知城市
   try {
     const res = await wx.cloud.callFunction({ name: 'get-stats' })
     if (res.result?.code === 0 && res.result.data?.cities?.length) {
-      cities.value = ['全国', ...res.result.data.cities]
-      return
+      const dbCities = res.result.data.cities
+      // 把 DB 中出现但 PROVINCE_MAP 没有的城市加入"其他"
+      const known = new Set(ALL_CITIES.map(c => c.trim()))
+      const unknown = dbCities.filter(c => !known.has(c.trim()))
+      if (unknown.length > 0) {
+        if (!PROVINCE_MAP['其他']) PROVINCE_MAP['其他'] = []
+        unknown.forEach(c => {
+          const trimmed = c.trim()
+          if (!PROVINCE_MAP['其他'].includes(trimmed)) {
+            PROVINCE_MAP['其他'].push(trimmed)
+          }
+        })
+        // 更新 provinces 和 ALL_CITIES
+        if (!provinces.includes('其他')) provinces.push('其他')
+        ALL_CITIES.push(...unknown.map(c => c.trim()))
+      }
     }
   } catch (err) {
-    console.error('loadCities via cloud function failed:', err)
+    console.error('loadCities error:', err)
   }
-
-  // 云函数失败，客户端分页拉取城市（单次最多100条，分多页合并）
-  try {
-    const db = wx.cloud.database()
-    const citySet = new Set()
-    for (let i = 0; i < 6; i++) {
-      const res = await db.collection('hotels').field({ city: true }).skip(i * 100).limit(100).get()
-      const data = res.data || []
-      data.forEach(h => { if (h.city && h.city.trim()) citySet.add(h.city.trim()) })
-      if (data.length < 100) break
-    }
-    const dbCities = Array.from(citySet).sort()
-    if (dbCities.length > 0) {
-      cities.value = ['全国', ...dbCities]
-      return
-    }
-  } catch (e) {
-    console.error('loadCities direct query failed:', e)
-  }
-
-  // 兜底：预置主要城市列表（数据库无数据时使用）
-  cities.value = ['全国', '北京', '上海', '广州', '深圳', '杭州', '成都', '重庆', '武汉', '西安', '南京', '长沙', '郑州', '天津', '苏州', '厦门', '青岛', '大连', '昆明', '三亚', '丽江', '大理', '东莞', '佛山', '合肥', '福州', '贵阳', '兰州', '南宁', '宁波', '沈阳', '石家庄', '太原', '无锡', '温州', '珠海', '中山', '惠州', '常州', '嘉兴', '绍兴', '金华', '台州', '泉州', '海口', '哈尔滨', '长春', '济南', '南昌', '拉萨', '乌鲁木齐', '呼和浩特', '银川', '西宁', '桂林', '北海', '烟台', '威海', '洛阳', '宜昌', '襄阳', '九江', '赣州', '遵义', '秦皇岛']
 }
 
-const selectedCity = ref('全国')
 const keyword = ref('')
 const results = ref([])
 const loading = ref(false)
@@ -157,14 +205,37 @@ function startCompare() {
   uni.navigateTo({ url: `/pages/compare/index?ids=${ids}` })
 }
 
+function selectProvince(p) {
+  selectedProvince.value = p
+  selectedCity.value = ''
+}
+
 function selectCity(city) {
-  selectedCity.value = city
+  if (city === '全省') {
+    selectedCity.value = ''
+  } else {
+    selectedCity.value = city
+  }
 }
 
 function quickSearch(name) {
   keyword.value = name
   selectedForCompare.value = []
   doSearch()
+}
+
+// 构建搜索用的城市参数
+function getCityParam() {
+  if (selectedCity.value) {
+    return { city: selectedCity.value }
+  }
+  if (selectedProvince.value !== '全国') {
+    const list = PROVINCE_MAP[selectedProvince.value]
+    if (list && list.length > 0) {
+      return { cities: list }
+    }
+  }
+  return {}
 }
 
 async function doSearch() {
@@ -178,10 +249,7 @@ async function doSearch() {
     selectedForCompare.value = []
     skip.value = 0
 
-    const data = { keyword: kw, skip: 0 }
-    if (selectedCity.value !== '全国') {
-      data.city = selectedCity.value
-    }
+    const data = { keyword: kw, skip: 0, ...getCityParam() }
     const res = await wx.cloud.callFunction({
       name: 'search-hotels',
       data
@@ -207,10 +275,7 @@ async function loadMore() {
 
   try {
     const nextSkip = skip.value + 20
-    const data = { keyword: keyword.value.trim(), skip: nextSkip }
-    if (selectedCity.value !== '全国') {
-      data.city = selectedCity.value
-    }
+    const data = { keyword: keyword.value.trim(), skip: nextSkip, ...getCityParam() }
     const res = await wx.cloud.callFunction({
       name: 'search-hotels',
       data
@@ -250,32 +315,53 @@ onMounted(() => {
 
 .city-bar {
   background: var(--bg-white);
-  padding: $spacing-sm $spacing-md;
   box-shadow: var(--shadow-sm);
 }
 
-.city-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
+.province-row {
+  white-space: nowrap;
+  padding: $spacing-sm $spacing-md;
+}
+
+.province-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48rpx;
+  padding: 0 20rpx;
+  margin-right: 12rpx;
+  border-radius: $radius-round;
+  background: var(--bg-color);
+  font-size: $font-xs;
+  color: var(--text-secondary);
+  transition: all var(--transition);
+
+  &:active { transform: scale(0.95); }
+}
+
+.province-chip-active {
+  background: var(--primary-color);
+  color: #fff;
+  font-weight: 500;
+}
+
+.city-scroll {
+  white-space: nowrap;
+  padding: 0 $spacing-md $spacing-sm;
 }
 
 .city-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 56rpx;
-  width: calc((100% - 60rpx) / 6);
-  padding: 0 8rpx;
+  height: 52rpx;
+  padding: 0 18rpx;
+  margin-right: 10rpx;
   border-radius: $radius-sm;
   background: var(--bg-color);
   font-size: $font-xs;
   color: var(--text-secondary);
-  box-sizing: border-box;
   transition: all var(--transition);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 
   &:active { transform: scale(0.95); }
 }

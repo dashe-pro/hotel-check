@@ -1,8 +1,18 @@
 <script setup>
 import { onLaunch } from '@dcloudio/uni-app'
 
+// 全局 privacy resolver，供隐私页面调用
+let _privacyResolver = null
+uni._resolvePrivacy = (event) => {
+  if (_privacyResolver) {
+    _privacyResolver(event)
+    _privacyResolver = null
+    return true
+  }
+  return false
+}
+
 onLaunch(() => {
-  // 云开发初始化
   if (typeof wx !== 'undefined' && wx.cloud) {
     wx.cloud.init({
       env: 'cloud1-d2gnannt0b0619333',
@@ -10,26 +20,11 @@ onLaunch(() => {
     })
   }
 
-  // 隐私授权处理
-  // 当用户未同意隐私协议却调用了隐私 API 时，微信会触发此事件
   if (typeof wx !== 'undefined' && wx.onNeedPrivacyAuthorization) {
     wx.onNeedPrivacyAuthorization((resolve) => {
-      // 弹出隐私保护指引，用户同意后 resolve
-      uni.showModal({
-        title: '隐私保护提示',
-        content: '为了提供酒店安全信息查询与反馈服务，我们需要获取您的微信头像和昵称。请阅读并同意《隐私保护指引》。',
-        confirmText: '同意',
-        cancelText: '查看指引',
-        success: (res) => {
-          if (res.confirm) {
-            resolve({ event: 'agree', buttonId: 'agree-btn' })
-          } else {
-            // 跳转到隐私保护指引页面
-            uni.navigateTo({ url: '/pages/privacy/index' })
-            resolve({ event: 'disagree' })
-          }
-        }
-      })
+      _privacyResolver = resolve
+      // 直接跳转隐私页面，由那里的 agreePrivacyAuthorization 按钮完成授权
+      uni.navigateTo({ url: '/pages/privacy/index' })
     })
   }
 })

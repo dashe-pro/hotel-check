@@ -6,7 +6,7 @@ const db = cloud.database()
 const PAGE_SIZE = 20
 
 exports.main = async (event) => {
-  const { keyword, city, skip = 0 } = event
+  const { keyword, city, cities, skip = 0 } = event
   if (!keyword || !keyword.trim()) {
     return { code: 1, msg: '关键词不能为空' }
   }
@@ -26,6 +26,12 @@ exports.main = async (event) => {
     if (city) {
       query = db.collection('hotels').where(
         db.command.and([where, { city: db.RegExp({ regexp: city, options: 'i' }) }])
+      )
+    } else if (cities && cities.length > 0) {
+      // 省份筛选：匹配多个城市
+      const cityConditions = cities.map(c => ({ city: db.RegExp({ regexp: c, options: 'i' }) }))
+      query = db.collection('hotels').where(
+        db.command.and([where, db.command.or(cityConditions)])
       )
     }
 

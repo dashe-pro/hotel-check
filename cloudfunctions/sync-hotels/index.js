@@ -10,17 +10,42 @@ if (!AMAP_KEY) {
 }
 
 const CITIES = [
+  // 一线 / 新一线
   '北京', '上海', '广州', '深圳', '杭州', '成都', '重庆',
   '武汉', '西安', '南京', '长沙', '郑州', '天津', '苏州',
-  '厦门', '青岛', '大连', '昆明', '三亚', '丽江', '大理',
-  '东莞', '佛山', '合肥', '福州', '贵阳', '哈尔滨', '海口',
-  '呼和浩特', '济南', '拉萨', '兰州', '南昌', '南宁', '宁波',
-  '沈阳', '石家庄', '太原', '乌鲁木齐', '无锡', '温州', '银川',
-  '长春', '珠海', '桂林', '烟台', '扬州', '洛阳', '九江',
-  '黄山', '张家界', '秦皇岛', '威海', '北海', '西双版纳'
+  // 省会城市
+  '合肥', '福州', '贵阳', '哈尔滨', '海口', '呼和浩特',
+  '济南', '拉萨', '兰州', '南昌', '南宁', '宁波',
+  '沈阳', '石家庄', '太原', '乌鲁木齐', '银川',
+  '长春', '昆明', '西宁',
+  // 热门旅游城市
+  '厦门', '青岛', '大连', '三亚', '丽江', '大理',
+  '桂林', '张家界', '黄山', '秦皇岛', '威海', '北海',
+  '西双版纳', '烟台', '洛阳',
+  // 二三线重要城市
+  '东莞', '佛山', '无锡', '温州', '珠海', '中山',
+  '惠州', '常州', '嘉兴', '绍兴', '金华', '台州',
+  '泉州', '漳州', '莆田', '汕头', '湛江', '江门',
+  '肇庆', '茂名', '梅州', '清远', '揭阳',
+  '唐山', '保定', '邯郸', '廊坊', '沧州',
+  '徐州', '南通', '盐城', '泰州', '镇江', '淮安',
+  '临沂', '淄博', '潍坊', '济宁', '泰安',
+  '洛阳', '南阳', '许昌', '周口', '新乡',
+  '襄阳', '宜昌', '荆州', '黄冈',
+  '岳阳', '衡阳', '株洲', '常德',
+  '绵阳', '宜宾', '南充', '泸州',
+  '九江', '赣州', '上饶', '宜春',
+  '遵义', '毕节', '六盘水',
+  '咸阳', '宝鸡', '榆林',
+  '柳州', '玉林', '桂林'
 ]
 
-const PAGES = 8
+// 多关键词搜索，覆盖更多住宿类型
+const KEYWORD_CONFIGS = [
+  { kw: '酒店', pages: 12 },
+  { kw: '宾馆', pages: 5 },
+  { kw: '民宿', pages: 3 }
+]
 const BATCH_SIZE = 100 // db.command.in 上限
 
 exports.main = async () => {
@@ -86,15 +111,17 @@ exports.main = async () => {
 
 function fetchHotelsFromAmap(city) {
   const requests = []
-  for (let page = 1; page <= PAGES; page++) {
-    requests.push(fetchPage(city, page))
+  for (const cfg of KEYWORD_CONFIGS) {
+    for (let page = 1; page <= cfg.pages; page++) {
+      requests.push(fetchPage(city, page, cfg.kw))
+    }
   }
   return Promise.all(requests).then(results => results.flat())
 }
 
-function fetchPage(city, page) {
+function fetchPage(city, page, keyword) {
   return new Promise((resolve) => {
-    const url = `https://restapi.amap.com/v5/place/text?key=${AMAP_KEY}&keywords=酒店&types=100100&region=${encodeURIComponent(city)}&city_limit=true&page_size=25&page=${page}`
+    const url = `https://restapi.amap.com/v5/place/text?key=${AMAP_KEY}&keywords=${encodeURIComponent(keyword)}&types=100100&region=${encodeURIComponent(city)}&city_limit=true&page_size=25&page=${page}`
     https.get(url, (res) => {
       let data = ''
       res.on('data', chunk => { data += chunk })

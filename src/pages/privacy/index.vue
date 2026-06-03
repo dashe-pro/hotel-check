@@ -1,6 +1,11 @@
 <template>
   <view class="page">
     <view class="content">
+      <view class="agree-bar">
+        <button class="agree-btn" open-type="agreePrivacyAuthorization" @agreeprivacyauthorization="onAgree">
+          同意隐私保护指引
+        </button>
+      </view>
       <text class="title">隐私保护指引</text>
       <text class="update-date">更新日期：2026年5月27日</text>
 
@@ -54,6 +59,22 @@
 </template>
 
 <script setup>
+function onAgree(e) {
+  // 如果是从隐私授权流程跳转来的，完成授权
+  if (uni._resolvePrivacy) {
+    uni._resolvePrivacy(e)
+    uni._resolvePrivacy = null
+  }
+  uni.showToast({ title: '已同意', icon: 'success' })
+  setTimeout(() => {
+    const pages = getCurrentPages()
+    if (pages.length > 1) {
+      uni.navigateBack()
+    } else {
+      uni.switchTab({ url: '/pages/my/index' })
+    }
+  }, 600)
+}
 </script>
 
 <style lang="scss" scoped>
@@ -61,6 +82,21 @@
   min-height: 100vh;
   background: var(--bg-color);
   padding-bottom: 60rpx;
+}
+
+.agree-bar {
+  display: flex;
+  justify-content: center;
+  margin-bottom: $spacing-lg;
+}
+
+.agree-btn {
+  background: var(--primary-color);
+  color: #fff;
+  font-size: $font-md;
+  border-radius: $radius-round;
+  padding: 16rpx 48rpx;
+  font-weight: 500;
 }
 
 .content {
